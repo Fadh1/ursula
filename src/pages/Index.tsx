@@ -3,6 +3,7 @@ import TextEditor from '@/components/TextEditor'
 import HighlightSidebar from '@/components/HighlightSidebar'
 import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Highlight {
   id: string
@@ -69,46 +70,48 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
-      {/* Floating Open Chat Button */}
-      <div className="fixed top-6 right-6 z-50">
-        <Button
-          variant={sidebarOpen ? "default" : "outline"}
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="gap-2 shadow-lg backdrop-blur-sm bg-background/80 hover:bg-background/90 border-border/50"
-        >
-          <MessageCircle size={16} />
-          {sidebarOpen ? 'Close Chat' : 'Open Chat'}
-        </Button>
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex">
+      {/* Main Content Area */}
+      <div className={cn(
+        "transition-all duration-300 ease-in-out",
+        sidebarOpen ? "w-[60%]" : "w-full"
+      )}>
+        {/* Floating Open Chat Button */}
+        <div className="fixed top-6 right-6 z-50">
+          <Button
+            variant={sidebarOpen ? "default" : "outline"}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="gap-2 shadow-lg backdrop-blur-sm bg-background/80 hover:bg-background/90 border-border/50"
+          >
+            <MessageCircle size={16} />
+            {sidebarOpen ? 'Close Chat' : 'Open Chat'}
+          </Button>
+        </div>
+
+        {/* Main Content */}
+        <main className="container mx-auto px-4 py-12 h-screen overflow-y-auto">
+          <div className="flex justify-center">
+            <TextEditor 
+              onHighlightCreate={handleHighlightCreate}
+              activeHighlight={currentHighlight?.id}
+              onOpenSidebar={handleOpenSidebar}
+            />
+          </div>
+        </main>
       </div>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-12">
-        <div className="flex justify-center">
-          <TextEditor 
-            onHighlightCreate={handleHighlightCreate}
-            activeHighlight={currentHighlight?.id}
-            onOpenSidebar={handleOpenSidebar}
+      {/* Sidebar - 40% width when open */}
+      {sidebarOpen && (
+        <div className="w-[40%] h-screen overflow-hidden">
+          <HighlightSidebar
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            currentHighlight={currentHighlight}
+            highlights={highlights}
+            onSelectHighlight={handleSelectHighlight}
+            onTextUpdate={handleTextUpdate}
           />
         </div>
-      </main>
-
-      {/* Sidebar */}
-      <HighlightSidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        currentHighlight={currentHighlight}
-        highlights={highlights}
-        onSelectHighlight={handleSelectHighlight}
-        onTextUpdate={handleTextUpdate}
-      />
-      
-      {/* Overlay - only show backdrop blur for regular sidebar opening, not for refine mode */}  
-      {sidebarOpen && !currentHighlight && (
-        <div 
-          className="fixed inset-0 bg-background/20 backdrop-blur-sm z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
       )}
     </div>
   );
