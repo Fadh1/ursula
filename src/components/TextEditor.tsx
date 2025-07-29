@@ -132,7 +132,8 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl mx-auto focus:outline-none',
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl mx-auto focus:outline-none focus:border-none focus:ring-0 focus:shadow-none',
+        style: 'outline: none !important; border: none !important;'
       },
     },
     onSelectionUpdate: ({ editor }) => {
@@ -418,7 +419,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       <div className="bg-transparent">
         <EditorContent 
           editor={editor} 
-          className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent"
+          className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus:border-none [&_.ProseMirror]:focus:ring-0 [&_.ProseMirror]:focus:shadow-none"
         />
       </div>
 
