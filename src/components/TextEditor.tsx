@@ -270,8 +270,9 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       onClick={onClick}
       title={title}
       className={cn(
-        "h-8 w-8 p-0 transition-all duration-200 hover:scale-105",
-        isActive && "bg-primary text-primary-foreground shadow-sm"
+        "h-9 w-9 p-0 transition-all duration-200 hover:scale-105 rounded-lg",
+        isActive && "bg-primary text-primary-foreground shadow-sm",
+        !isActive && "hover:bg-black/5"
       )}
     >
       {children}
@@ -290,9 +291,9 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       <button
         onClick={() => setHighlightColor(color)}
         className={cn(
-          "w-6 h-6 rounded border-2 transition-all duration-200 hover:scale-110",
+          "w-7 h-7 rounded-lg border-2 transition-all duration-200 hover:scale-110 shadow-sm",
           colorClasses[color as keyof typeof colorClasses],
-          isActive && "ring-2 ring-primary ring-offset-2"
+          isActive && "ring-2 ring-primary ring-offset-2 scale-110"
         )}
         title={`Highlight with ${color}`}
       />
@@ -302,10 +303,10 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
   return (
     <div className="w-full max-w-4xl mx-auto relative">
       {/* Toolbar */}
-      <Card className="p-3 mb-4 bg-card/50 backdrop-blur-sm border-border/50 shadow-sm">
+      <Card className="p-3 mb-6 bg-white/60 backdrop-blur-md border-0 shadow-sm rounded-xl">
         <div className="flex flex-wrap items-center gap-2">
           {/* Text Formatting */}
-          <div className="flex items-center gap-1 pr-2 border-r border-border">
+          <div className="flex items-center gap-1 pr-3 border-r border-border/30">
             <ToolbarButton
               onClick={() => editor.chain().focus().toggleBold().run()}
               isActive={editor.isActive('bold')}
@@ -330,7 +331,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
           </div>
 
           {/* Headings */}
-          <div className="flex items-center gap-1 pr-2 border-r border-border">
+          <div className="flex items-center gap-1 pr-3 border-r border-border/30">
             <ToolbarButton
               onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
               isActive={editor.isActive('heading', { level: 1 })}
@@ -355,7 +356,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
           </div>
 
           {/* Lists */}
-          <div className="flex items-center gap-1 pr-2 border-r border-border">
+          <div className="flex items-center gap-1 pr-3 border-r border-border/30">
             <ToolbarButton
               onClick={() => editor.chain().focus().toggleBulletList().run()}
               isActive={editor.isActive('bulletList')}
@@ -380,7 +381,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
           </div>
 
           {/* Highlighting */}
-          <div className="flex items-center gap-2 pr-2 border-r border-border">
+          <div className="flex items-center gap-2 pr-3 border-r border-border/30">
             <div className="flex items-center gap-1">
               <HighlightColorButton color="yellow" isActive={highlightColor === 'yellow'} />
               <HighlightColorButton color="blue" isActive={highlightColor === 'blue'} />
@@ -414,12 +415,12 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       </Card>
 
       {/* Editor */}
-      <Card className="p-0 overflow-hidden bg-editor-bg border-editor-border shadow-lg">
+      <div className="bg-transparent">
         <EditorContent 
           editor={editor} 
-          className="min-h-[500px]"
+          className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent"
         />
-      </Card>
+      </div>
 
       {/* Selection Tooltip */}
       <SelectionTooltip
