@@ -23,6 +23,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SelectionTooltip from './SelectionTooltip'
+import InEditorDiff from './InEditorDiff'
+import { DiffContext } from '@/types/ai-models'
 
 interface Highlight {
   id: string
@@ -36,9 +38,21 @@ interface TextEditorProps {
   onHighlightCreate: (highlight: Highlight) => void
   activeHighlight?: string | null
   onOpenSidebar: () => void
+  diffData?: { original: string; suggested: string; context: DiffContext } | null
+  onDiffAccept?: () => void
+  onDiffReject?: () => void
+  onDiffUndo?: () => void
 }
 
-const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextEditorProps) => {
+const TextEditor = ({ 
+  onHighlightCreate, 
+  activeHighlight, 
+  onOpenSidebar, 
+  diffData, 
+  onDiffAccept, 
+  onDiffReject, 
+  onDiffUndo 
+}: TextEditorProps) => {
   const [highlightColor, setHighlightColor] = useState('yellow')
   const [showTooltip, setShowTooltip] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
@@ -423,6 +437,22 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
           className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus:border-none [&_.ProseMirror]:focus:ring-0 [&_.ProseMirror]:focus:shadow-none"
         />
         
+        {/* In-Editor Diff Overlay */}
+        {diffData && onDiffAccept && onDiffReject && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="max-w-4xl w-full">
+              <InEditorDiff
+                originalText={diffData.original}
+                suggestedText={diffData.suggested}
+                onAccept={onDiffAccept}
+                onReject={onDiffReject}
+                onUndo={onDiffUndo}
+                context={diffData.context}
+                className="mx-auto"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Selection Tooltip */}

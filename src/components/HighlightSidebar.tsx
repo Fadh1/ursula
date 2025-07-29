@@ -12,7 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import DiffView from './DiffView'
+import InEditorDiff from './InEditorDiff'
 import ActionPanel from './ActionPanel'
 import RewordDropdown from './RewordDropdown'
 import { ModelSelector } from './ModelSelector'
@@ -352,12 +352,13 @@ const HighlightSidebar = ({
                       </Button>
                     </div>
                     
-                    <DiffView
+                    <InEditorDiff
                       originalText={currentHighlight.text}
                       suggestedText={suggestedText}
                       onAccept={handleAcceptChanges}
                       onReject={handleRejectChanges}
-                      operation={currentContext.action}
+                      onUndo={currentContext.canUndo ? handleUndo : undefined}
+                      context={currentContext}
                     />
                   </div>
                 )}
