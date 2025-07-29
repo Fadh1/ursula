@@ -42,6 +42,8 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
   const [highlightColor, setHighlightColor] = useState('yellow')
   const [showTooltip, setShowTooltip] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
+  const [isRefining, setIsRefining] = useState(false)
+  const [refineSelection, setRefineSelection] = useState<{from: number, to: number} | null>(null)
   
   const editor = useEditor({
     extensions: [
@@ -82,8 +84,18 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection
       const hasContent = from !== to
+      
+      // If we're in refine mode and the selection is lost, restore it
+      if (isRefining && !hasContent && refineSelection) {
+        setTimeout(() => {
+          editor.chain().focus().setTextSelection(refineSelection).run()
+        }, 10)
+        return
+      }
+      
+      // Normal selection handling
       setHasSelection(hasContent)
-      setShowTooltip(hasContent)
+      setShowTooltip(hasContent && !isRefining) // Don't show tooltip if already refining
     },
   })
 
@@ -92,6 +104,24 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       // Don't dismiss if clicking on the tooltip itself
       const tooltipElement = document.querySelector('[data-selection-tooltip]')
       if (tooltipElement?.contains(event.target as Node)) {
+        return
+      }
+      
+      // Don't dismiss if clicking on the sidebar
+      const sidebarElement = event.target as HTMLElement
+      if (sidebarElement.closest('[class*="fixed right-0"]') || 
+          sidebarElement.closest('[data-sidebar]')) {
+        return
+      }
+      
+      // If clicking on main page while refining, exit refine mode
+      if (isRefining) {
+        setIsRefining(false)
+        setRefineSelection(null)
+        // Clear the selection
+        if (editor) {
+          editor.chain().focus().setTextSelection(editor.state.selection.to).run()
+        }
         return
       }
       
@@ -105,7 +135,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [hasSelection, editor])
+  }, [hasSelection, editor, isRefining])
 
   const handleRefine = () => {
     if (!editor) return
@@ -114,6 +144,10 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
     const selectedText = editor.state.doc.textBetween(from, to, ' ')
     
     if (selectedText.trim()) {
+      // Enter refine mode and store the selection
+      setIsRefining(true)
+      setRefineSelection({ from, to })
+      
       // Create highlight object for the selected text
       const highlight: Highlight = {
         id: `refine-${Date.now()}`,
@@ -125,6 +159,11 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
 
       // Create the highlight and open sidebar
       onHighlightCreate(highlight)
+      
+      // Keep the editor focused and maintain the selection
+      setTimeout(() => {
+        editor.chain().focus().setTextSelection({ from, to }).run()
+      }, 100)
     }
     
     setShowTooltip(false)

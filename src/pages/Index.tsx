@@ -111,8 +111,8 @@ const Index = () => {
         onTextUpdate={handleTextUpdate}
       />
       
-      {/* Overlay */}
-      {sidebarOpen && (
+      {/* Overlay - only show backdrop blur for regular sidebar opening, not for refine mode */}  
+      {sidebarOpen && !currentHighlight && (
         <div 
           className="fixed inset-0 bg-background/20 backdrop-blur-sm z-40"
           onClick={() => setSidebarOpen(false)}
