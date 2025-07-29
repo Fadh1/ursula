@@ -33,6 +33,7 @@ const SelectionTooltip = ({ visible, onRefine }: SelectionTooltipProps) => {
   return (
     <div
       ref={tooltipRef}
+      data-selection-tooltip
       className={cn(
         "fixed z-50 transform -translate-x-1/2 -translate-y-full",
         "animate-fade-in"

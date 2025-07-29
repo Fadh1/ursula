@@ -88,17 +88,46 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
   })
 
   useEffect(() => {
-    const handleClickOutside = () => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Don't dismiss if clicking on the tooltip itself
+      const tooltipElement = document.querySelector('[data-selection-tooltip]')
+      if (tooltipElement?.contains(event.target as Node)) {
+        return
+      }
+      
+      // Don't dismiss if there's still an active selection and we have an editor
+      if (hasSelection && editor?.state.selection.from !== editor?.state.selection.to) {
+        return
+      }
+      
       setShowTooltip(false)
     }
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [])
+  }, [hasSelection, editor])
 
   const handleRefine = () => {
+    if (!editor) return
+
+    const { from, to } = editor.state.selection
+    const selectedText = editor.state.doc.textBetween(from, to, ' ')
+    
+    if (selectedText.trim()) {
+      // Create highlight object for the selected text
+      const highlight: Highlight = {
+        id: `refine-${Date.now()}`,
+        text: selectedText,
+        color: 'blue', // Default color for refine highlights
+        position: { from, to },
+        timestamp: new Date()
+      }
+
+      // Create the highlight and open sidebar
+      onHighlightCreate(highlight)
+    }
+    
     setShowTooltip(false)
-    onOpenSidebar()
   }
 
   const addHighlight = useCallback(() => {
