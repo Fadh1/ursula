@@ -18,13 +18,11 @@ import {
   Eye,
   PlusCircle,
   History,
-  Settings,
   AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DiffView from './DiffView'
 import { ModelSelector } from './ModelSelector'
-import { ApiKeyDialog } from './ApiKeyDialog'
 import { AIModel, AIHistoryEntry } from '@/types/ai-models'
 import { aiService } from '@/services/ai-service'
 import { useAIHistory } from '@/hooks/use-ai-history'
@@ -71,16 +69,18 @@ const HighlightSidebar = ({
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
   const [availableModels, setAvailableModels] = useState<AIModel[]>([])
   const [promptValue, setPromptValue] = useState('')
-  const [showSettings, setShowSettings] = useState(false)
   
   const { history, addEntry, updateEntry } = useAIHistory()
   const { toast } = useToast()
 
   useEffect(() => {
-    const models = aiService.getAvailableModels()
-    setAvailableModels(models)
-    const defaultModel = models.find(m => m.isDefault) || models[0]
-    setSelectedModel(defaultModel)
+    const loadModels = async () => {
+      const models = await aiService.getAvailableModels()
+      setAvailableModels(models)
+      const defaultModel = models.find(m => m.isDefault) || models[0]
+      setSelectedModel(defaultModel)
+    }
+    loadModels()
   }, [])
 
   const handleOptionSelect = async (option: 'verify' | 'expand') => {
@@ -108,6 +108,14 @@ const HighlightSidebar = ({
         })
         setIsLoading(false)
         return
+      }
+      
+      // Show fallback notification if a different model was used
+      if (response.fallbackUsed && response.actualModel) {
+        toast({
+          title: 'Model Switched',
+          description: `Used ${response.actualModel.name} instead of ${selectedModel.name}`,
+        })
       }
       
       const historyEntry: AIHistoryEntry = {
@@ -156,6 +164,14 @@ const HighlightSidebar = ({
         })
         setIsLoading(false)
         return
+      }
+      
+      // Show fallback notification if a different model was used
+      if (response.fallbackUsed && response.actualModel) {
+        toast({
+          title: 'Model Switched',
+          description: `Used ${response.actualModel.name} instead of ${selectedModel.name}`,
+        })
       }
       
       const historyEntry: AIHistoryEntry = {
@@ -233,24 +249,14 @@ const HighlightSidebar = ({
               <Sparkles className="text-primary" size={20} />
               <h3 className="font-semibold text-foreground">Refine</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowSettings(!showSettings)}
-                className="h-8 w-8 p-0 hover:bg-sidebar-border"
-              >
-                <Settings size={16} />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={onClose}
-                className="h-8 w-8 p-0 hover:bg-sidebar-border"
-              >
-                <X size={16} />
-              </Button>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onClose}
+              className="h-8 w-8 p-0 hover:bg-sidebar-border"
+            >
+              <X size={16} />
+            </Button>
           </div>
         </div>
 
@@ -474,13 +480,6 @@ const HighlightSidebar = ({
           </Tabs>
         </div>
       </div>
-      
-      {/* API Key Configuration Dialog */}
-      <ApiKeyDialog
-        open={showSettings}
-        onOpenChange={setShowSettings}
-        availableModels={availableModels}
-      />
     </div>
   )
 }

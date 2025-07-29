@@ -52,7 +52,7 @@ export class OpenAIAdapter implements AIProviderAdapter {
 
   getModelInfo(): AIModel {
     return {
-      id: 'gpt-4-turbo',
+      id: 'gpt-4-turbo-preview',
       name: 'GPT-4 Turbo',
       provider: 'openai',
       capabilities: ['Text generation', 'Code writing', 'Analysis', 'Creative writing'],

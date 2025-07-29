@@ -1,11 +1,16 @@
 export interface AIModel {
   id: string
   name: string
-  provider: 'openai' | 'anthropic' | 'google' | 'custom'
+  provider: 'openai' | 'anthropic' | 'google' | 'ollama' | 'lmstudio'
   capabilities: string[]
   maxTokens: number
   costPerToken: number
   isDefault: boolean
+  // New fields
+  isLocal?: boolean
+  status?: 'online' | 'offline' | 'checking'
+  lastChecked?: Date
+  averageResponseTime?: number
 }
 
 export interface AIRequest {
@@ -25,6 +30,8 @@ export interface AIResponse {
   model: AIModel
   processingTime: number
   error?: string
+  actualModel?: AIModel // Model actually used (for fallback scenarios)
+  fallbackUsed?: boolean
 }
 
 export interface AIHistoryEntry extends AIRequest {
@@ -39,7 +46,17 @@ export interface AIProviderConfig {
 }
 
 export interface AIProviderAdapter {
-  sendRequest(text: string, prompt: string, config: AIProviderConfig): Promise<string>
+  sendRequest(text: string, prompt: string, config: AIProviderConfig, modelName?: string): Promise<string>
   validateKey(config: AIProviderConfig): Promise<boolean>
-  getModelInfo(): AIModel
+  getModelInfo(): AIModel | AIModel[]
+  discoverModels?(): Promise<AIModel[]>
+}
+
+export interface ModelHealth {
+  modelId: string
+  status: 'online' | 'offline' | 'degraded'
+  lastChecked: Date
+  responseTime?: number
+  error?: string
+  consecutiveFailures: number
 }

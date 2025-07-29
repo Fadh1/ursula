@@ -1,7 +1,7 @@
 import { AIModel, AIProviderAdapter, AIProviderConfig } from '@/types/ai-models'
 
 export class AnthropicAdapter implements AIProviderAdapter {
-  async sendRequest(text: string, prompt: string, config: AIProviderConfig): Promise<string> {
+  async sendRequest(text: string, prompt: string, config: AIProviderConfig, modelName?: string): Promise<string> {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {

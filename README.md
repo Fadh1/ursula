@@ -50,6 +50,49 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## AI Model Configuration
+
+This application supports multiple AI providers and both cloud and local models:
+
+### Cloud Providers
+- **OpenAI** (GPT-4 Turbo)
+- **Anthropic** (Claude 3 Opus)
+- **Google** (Gemini Pro)
+
+### Local Providers
+- **Ollama** (Various local models)
+- **LM Studio** (OpenAI-compatible local models)
+
+### Setup
+
+1. Copy the environment template:
+```sh
+cp .env.local.example .env.local
+```
+
+2. Configure your API keys and endpoints in `.env.local`:
+```env
+# Cloud providers (optional - only add keys for providers you want to use)
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GOOGLE_API_KEY=your_google_ai_api_key_here
+
+# Local providers (optional - only add if you have these services running)
+OLLAMA_BASE_URL=http://localhost:11434
+LM_STUDIO_BASE_URL=http://localhost:1234
+```
+
+3. Restart the development server:
+```sh
+npm run dev
+```
+
+### Features
+- **Automatic Model Discovery**: Local models are automatically detected
+- **Health Monitoring**: Real-time status indicators for all models
+- **Fallback Support**: Automatically switches to backup models if primary fails
+- **Performance Metrics**: Shows response times and connection status
+
 ## What technologies are used for this project?
 
 This project is built with:

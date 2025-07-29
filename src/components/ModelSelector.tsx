@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Info } from 'lucide-react'
+import { Info, Circle, Loader2 } from 'lucide-react'
 
 interface ModelSelectorProps {
   onModelSelect: (model: AIModel) => void
@@ -34,8 +34,25 @@ export function ModelSelector({ onModelSelect, currentModel, availableModels }: 
         return 'Anthropic'
       case 'google':
         return 'Google'
+      case 'ollama':
+        return 'Ollama'
+      case 'lmstudio':
+        return 'LM Studio'
       default:
         return provider
+    }
+  }
+  
+  const getStatusIcon = (status?: string) => {
+    switch (status) {
+      case 'online':
+        return <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+      case 'offline':
+        return <Circle className="w-2 h-2 fill-red-500 text-red-500" />
+      case 'checking':
+        return <Loader2 className="w-2 h-2 animate-spin text-yellow-500" />
+      default:
+        return <Circle className="w-2 h-2 fill-gray-400 text-gray-400" />
     }
   }
 
@@ -49,12 +66,25 @@ export function ModelSelector({ onModelSelect, currentModel, availableModels }: 
           <SelectGroup>
             <SelectLabel>Available Models</SelectLabel>
             {availableModels.map((model) => (
-              <SelectItem key={model.id} value={model.id} className="flex items-center justify-between">
+              <SelectItem 
+                key={model.id} 
+                value={model.id} 
+                className={`flex items-center justify-between ${
+                  model.status === 'offline' ? 'opacity-50' : ''
+                }`}
+                disabled={model.status === 'offline'}
+              >
                 <div className="flex items-center gap-2">
+                  {getStatusIcon(model.status)}
                   <span>{model.name}</span>
                   {model.isDefault && (
                     <Badge variant="secondary" className="text-xs">
                       Default
+                    </Badge>
+                  )}
+                  {model.isLocal && (
+                    <Badge variant="outline" className="text-xs">
+                      Local
                     </Badge>
                   )}
                 </div>
@@ -87,8 +117,21 @@ export function ModelSelector({ onModelSelect, currentModel, availableModels }: 
                   ))}
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Max tokens: {currentModel.maxTokens.toLocaleString()}
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div>Max tokens: {currentModel.maxTokens.toLocaleString()}</div>
+                <div className="flex items-center gap-2">
+                  <span>Status:</span>
+                  <div className="flex items-center gap-1">
+                    {getStatusIcon(currentModel.status)}
+                    <span className="capitalize">{currentModel.status || 'unknown'}</span>
+                  </div>
+                </div>
+                {currentModel.averageResponseTime && (
+                  <div>Avg response: {currentModel.averageResponseTime}ms</div>
+                )}
+                {currentModel.lastChecked && (
+                  <div>Last checked: {currentModel.lastChecked.toLocaleTimeString()}</div>
+                )}
               </div>
             </div>
           </TooltipContent>
