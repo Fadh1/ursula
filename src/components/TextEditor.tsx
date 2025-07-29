@@ -44,6 +44,73 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
   const [hasSelection, setHasSelection] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [refineSelection, setRefineSelection] = useState<{from: number, to: number} | null>(null)
+
+  // localStorage key for saving editor content
+  const STORAGE_KEY = 'text-editor-content'
+
+  // Load content from localStorage
+  const loadSavedContent = () => {
+    try {
+      const savedContent = localStorage.getItem(STORAGE_KEY)
+      if (savedContent) {
+        return JSON.parse(savedContent)
+      }
+    } catch (error) {
+      console.error('Error loading saved content:', error)
+    }
+    
+    // Default content if nothing saved
+    return {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Welcome to Your AI-Powered Text Editor' }]
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'This is a powerful text editor built with TipTap. You can format your text, create highlights, and discuss them with AI.' }]
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Getting Started' }]
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Try selecting some text and highlighting it! When you highlight text, a side panel will open where you can chat with AI about the selected content.' }]
+        },
+        {
+          type: 'heading',
+          attrs: { level: 3 },
+          content: [{ type: 'text', text: 'Features' }]
+        },
+        {
+          type: 'bulletList',
+          content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Rich text formatting' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Multiple highlight colors' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'AI-powered discussions' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Clean, pastel design' }] }] }
+          ]
+        },
+        {
+          type: 'blockquote',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Select any text and highlight it to start a conversation with AI about that specific content!' }] }]
+        }
+      ]
+    }
+  }
+
+  // Save content to localStorage
+  const saveContent = (content: any) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(content))
+    } catch (error) {
+      console.error('Error saving content:', error)
+    }
+  }
   
   const editor = useEditor({
     extensions: [
@@ -57,25 +124,12 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       TextStyle,
       Color,
     ],
-    content: `
-      <h1>Welcome to Your AI-Powered Text Editor</h1>
-      <p>This is a powerful text editor built with TipTap. You can format your text, create highlights, and discuss them with AI.</p>
-      
-      <h2>Getting Started</h2>
-      <p>Try selecting some text and highlighting it! When you highlight text, a side panel will open where you can chat with AI about the selected content.</p>
-      
-      <h3>Features</h3>
-      <ul>
-        <li>Rich text formatting</li>
-        <li>Multiple highlight colors</li>
-        <li>AI-powered discussions</li>
-        <li>Clean, pastel design</li>
-      </ul>
-      
-      <blockquote>
-        <p>Select any text and highlight it to start a conversation with AI about that specific content!</p>
-      </blockquote>
-    `,
+    content: loadSavedContent(),
+    onUpdate: ({ editor }) => {
+      // Auto-save content to localStorage whenever it changes
+      const json = editor.getJSON()
+      saveContent(json)
+    },
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl mx-auto focus:outline-none',
