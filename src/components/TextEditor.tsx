@@ -104,7 +104,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
   }
 
   // Save content to localStorage
-  const saveContent = (content: any) => {
+  const saveContent = (content: object) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(content))
     } catch (error) {
@@ -191,6 +191,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [hasSelection, editor, isRefining])
+
 
   const handleRefine = () => {
     if (!editor) return
@@ -416,11 +417,12 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       </Card>
 
       {/* Editor */}
-      <div className="bg-transparent">
+      <div className="bg-transparent relative">
         <EditorContent 
           editor={editor} 
           className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus:border-none [&_.ProseMirror]:focus:ring-0 [&_.ProseMirror]:focus:shadow-none"
         />
+        
       </div>
 
       {/* Selection Tooltip */}

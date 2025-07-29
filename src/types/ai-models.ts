@@ -60,3 +60,46 @@ export interface ModelHealth {
   error?: string
   consecutiveFailures: number
 }
+
+// Enhanced types for Sidebar Improvements
+export type ActionType = 'verify' | 'expand' | 'reword';
+
+export type RewordType = 'concise' | 'flesh_out' | 'tone' | 'simplify' | 'engaging' | 'audience';
+
+export type ToneType = 'formal' | 'casual' | 'academic';
+
+export type AudienceType = 'technical' | 'general';
+
+export interface RewordConfig {
+  type: RewordType;
+  tone?: ToneType;
+  audience?: AudienceType;
+}
+
+export interface ActionOptions {
+  rewordType?: RewordType;
+  tone?: ToneType;
+  audience?: AudienceType;
+  customPrompt?: string;
+}
+
+export interface DiffContext {
+  action: ActionType;
+  options: ActionOptions;
+  timestamp: Date;
+  model: AIModel;
+  canUndo: boolean;
+}
+
+export interface ActionRecommendation {
+  suggested: ActionType;
+  confidence: number;
+  reason: string;
+  alternatives: ActionType[];
+}
+
+export interface SmartSuggestion {
+  recommendation: ActionRecommendation;
+  previewText?: string;
+  processing: boolean;
+}
