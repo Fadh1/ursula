@@ -1,7 +1,7 @@
 import { AIModel, AIProviderAdapter, AIProviderConfig } from '@/types/ai-models'
 
 export class OpenAIAdapter implements AIProviderAdapter {
-  async sendRequest(text: string, prompt: string, config: AIProviderConfig): Promise<string> {
+  async sendRequest(text: string, prompt: string, config: AIProviderConfig, modelName?: string): Promise<string> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
