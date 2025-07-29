@@ -8,35 +8,52 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Pastel color palette for clean, soft design */
+    --background: 45 30% 98%;
+    --foreground: 210 20% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 45 25% 96%;
+    --card-foreground: 210 20% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 45 25% 96%;
+    --popover-foreground: 210 20% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Sage green primary */
+    --primary: 120 20% 65%;
+    --primary-foreground: 45 30% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Soft lavender secondary */
+    --secondary: 270 25% 88%;
+    --secondary-foreground: 270 15% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Warm cream muted */
+    --muted: 45 30% 94%;
+    --muted-foreground: 210 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Gentle coral accent */
+    --accent: 15 40% 85%;
+    --accent-foreground: 15 25% 25%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 65% 75%;
+    --destructive-foreground: 0 5% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 120 15% 88%;
+    --input: 120 15% 92%;
+    --ring: 120 20% 65%;
 
-    --radius: 0.5rem;
+    /* Highlight colors for text selection */
+    --highlight-yellow: 50 80% 88%;
+    --highlight-blue: 220 60% 88%;
+    --highlight-green: 120 50% 88%;
+    --highlight-pink: 330 60% 90%;
+
+    /* Editor specific colors */
+    --editor-bg: 45 35% 97%;
+    --editor-border: 120 20% 85%;
+    --sidebar-bg: 270 30% 95%;
+    --sidebar-border: 270 20% 80%;
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,33 +73,46 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode with muted pastels */
+    --background: 210 25% 8%;
+    --foreground: 45 20% 92%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 210 20% 12%;
+    --card-foreground: 45 20% 92%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 210 20% 12%;
+    --popover-foreground: 45 20% 92%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 120 25% 45%;
+    --primary-foreground: 45 20% 95%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 270 20% 20%;
+    --secondary-foreground: 270 20% 85%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 210 20% 15%;
+    --muted-foreground: 210 10% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 15 30% 35%;
+    --accent-foreground: 15 20% 90%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 55% 55%;
+    --destructive-foreground: 0 10% 95%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 210 15% 20%;
+    --input: 210 15% 18%;
+    --ring: 120 25% 45%;
+
+    /* Dark mode highlight colors */
+    --highlight-yellow: 50 40% 25%;
+    --highlight-blue: 220 40% 25%;
+    --highlight-green: 120 30% 25%;
+    --highlight-pink: 330 40% 30%;
+
+    /* Dark editor colors */
+    --editor-bg: 210 20% 10%;
+    --editor-border: 210 15% 25%;
+    --sidebar-bg: 270 20% 15%;
+    --sidebar-border: 270 15% 25%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -100,6 +130,85 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-medium;
+  }
+
+  /* TipTap Editor Styles */
+  .ProseMirror {
+    @apply bg-editor-bg border border-editor-border rounded-lg p-6 min-h-[400px] focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-200;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+  }
+
+  .ProseMirror p {
+    @apply mb-4 last:mb-0;
+  }
+
+  .ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
+    @apply font-semibold text-foreground mb-3;
+  }
+
+  .ProseMirror h1 { @apply text-2xl; }
+  .ProseMirror h2 { @apply text-xl; }
+  .ProseMirror h3 { @apply text-lg; }
+
+  /* Highlight styles */
+  .ProseMirror mark[data-color="yellow"] {
+    @apply bg-highlight-yellow border-l-2 border-accent px-1 rounded-sm;
+  }
+
+  .ProseMirror mark[data-color="blue"] {
+    @apply bg-highlight-blue border-l-2 border-primary px-1 rounded-sm;
+  }
+
+  .ProseMirror mark[data-color="green"] {
+    @apply bg-highlight-green border-l-2 border-accent px-1 rounded-sm;
+  }
+
+  .ProseMirror mark[data-color="pink"] {
+    @apply bg-highlight-pink border-l-2 border-secondary px-1 rounded-sm;
+  }
+
+  /* Selection styles */
+  .ProseMirror::selection {
+    @apply bg-primary/20;
+  }
+
+  .ProseMirror *::selection {
+    @apply bg-primary/20;
+  }
+}
+
+@layer utilities {
+  .bg-editor-bg {
+    background-color: hsl(var(--editor-bg));
+  }
+  
+  .border-editor-border {
+    border-color: hsl(var(--editor-border));
+  }
+
+  .bg-sidebar-bg {
+    background-color: hsl(var(--sidebar-bg));
+  }
+
+  .border-sidebar-border {
+    border-color: hsl(var(--sidebar-border));
+  }
+
+  .bg-highlight-yellow {
+    background-color: hsl(var(--highlight-yellow));
+  }
+
+  .bg-highlight-blue {
+    background-color: hsl(var(--highlight-blue));
+  }
+
+  .bg-highlight-green {
+    background-color: hsl(var(--highlight-green));
+  }
+
+  .bg-highlight-pink {
+    background-color: hsl(var(--highlight-pink));
   }
 }
