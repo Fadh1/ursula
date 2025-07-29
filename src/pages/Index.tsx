@@ -13,12 +13,41 @@ interface Highlight {
 }
 
 const Index = () => {
-  const [highlights, setHighlights] = useState<Highlight[]>([])
+  // Load highlights from localStorage
+  const loadSavedHighlights = (): Highlight[] => {
+    try {
+      const saved = localStorage.getItem('text-editor-highlights')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Convert timestamp strings back to Date objects
+        return parsed.map((h: any) => ({
+          ...h,
+          timestamp: new Date(h.timestamp)
+        }))
+      }
+    } catch (error) {
+      console.error('Error loading highlights:', error)
+    }
+    return []
+  }
+
+  // Save highlights to localStorage
+  const saveHighlights = (highlights: Highlight[]) => {
+    try {
+      localStorage.setItem('text-editor-highlights', JSON.stringify(highlights))
+    } catch (error) {
+      console.error('Error saving highlights:', error)
+    }
+  }
+
+  const [highlights, setHighlights] = useState<Highlight[]>(loadSavedHighlights)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentHighlight, setCurrentHighlight] = useState<Highlight | null>(null)
 
   const handleHighlightCreate = (highlight: Highlight) => {
-    setHighlights(prev => [...prev, highlight])
+    const newHighlights = [...highlights, highlight]
+    setHighlights(newHighlights)
+    saveHighlights(newHighlights)
     setCurrentHighlight(highlight)
     setSidebarOpen(true)
   }
@@ -32,9 +61,11 @@ const Index = () => {
   }
 
   const handleTextUpdate = (highlightId: string, newText: string) => {
-    setHighlights(prev => 
-      prev.map(h => h.id === highlightId ? { ...h, text: newText } : h)
+    const updatedHighlights = highlights.map(h => 
+      h.id === highlightId ? { ...h, text: newText } : h
     )
+    setHighlights(updatedHighlights)
+    saveHighlights(updatedHighlights)
   }
 
   return (
@@ -111,8 +142,8 @@ const Index = () => {
         onTextUpdate={handleTextUpdate}
       />
       
-      {/* Overlay */}
-      {sidebarOpen && (
+      {/* Overlay - only show backdrop blur for regular sidebar opening, not for refine mode */}  
+      {sidebarOpen && !currentHighlight && (
         <div 
           className="fixed inset-0 bg-background/20 backdrop-blur-sm z-40"
           onClick={() => setSidebarOpen(false)}

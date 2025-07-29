@@ -221,10 +221,12 @@ const HighlightSidebar = ({
   if (!isOpen) return null
 
   return (
-    <div className={cn(
-      "fixed right-0 top-0 h-full w-96 bg-sidebar-bg border-l border-sidebar-border shadow-2xl z-50 transform transition-transform duration-300 ease-out",
-      isOpen ? "translate-x-0" : "translate-x-full"
-    )}>
+    <div 
+      data-sidebar
+      className={cn(
+        "fixed right-0 top-0 h-full w-96 bg-sidebar-bg border-l border-sidebar-border shadow-2xl z-50 transform transition-transform duration-300 ease-out",
+        isOpen ? "translate-x-0" : "translate-x-full"
+      )}>
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="p-4 border-b border-sidebar-border bg-gradient-to-r from-sidebar-bg to-background">
