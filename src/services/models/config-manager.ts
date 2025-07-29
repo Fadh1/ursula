@@ -1,11 +1,11 @@
 import { AIProviderConfig } from '@/types/ai-models'
 
 interface EnvironmentConfig {
-  OPENAI_API_KEY?: string
-  ANTHROPIC_API_KEY?: string
-  GOOGLE_API_KEY?: string
-  OLLAMA_BASE_URL?: string
-  LM_STUDIO_BASE_URL?: string
+  VITE_OPENAI_API_KEY?: string
+  VITE_ANTHROPIC_API_KEY?: string
+  VITE_GOOGLE_API_KEY?: string
+  VITE_OLLAMA_BASE_URL?: string
+  VITE_LM_STUDIO_BASE_URL?: string
 }
 
 export class ConfigManager {
@@ -28,38 +28,38 @@ export class ConfigManager {
     const env = import.meta.env as unknown as EnvironmentConfig
     
     // OpenAI configuration
-    if (env.OPENAI_API_KEY) {
+    if (env.VITE_OPENAI_API_KEY) {
       this.configs.set('openai', {
-        apiKey: env.OPENAI_API_KEY,
+        apiKey: env.VITE_OPENAI_API_KEY,
       })
     }
     
     // Anthropic configuration
-    if (env.ANTHROPIC_API_KEY) {
+    if (env.VITE_ANTHROPIC_API_KEY) {
       this.configs.set('anthropic', {
-        apiKey: env.ANTHROPIC_API_KEY,
+        apiKey: env.VITE_ANTHROPIC_API_KEY,
       })
     }
     
     // Google configuration
-    if (env.GOOGLE_API_KEY) {
+    if (env.VITE_GOOGLE_API_KEY) {
       this.configs.set('google', {
-        apiKey: env.GOOGLE_API_KEY,
+        apiKey: env.VITE_GOOGLE_API_KEY,
       })
     }
     
     // Ollama configuration
-    if (env.OLLAMA_BASE_URL) {
+    if (env.VITE_OLLAMA_BASE_URL) {
       this.configs.set('ollama', {
-        baseUrl: env.OLLAMA_BASE_URL,
+        baseUrl: env.VITE_OLLAMA_BASE_URL,
         apiKey: '', // Ollama doesn't require API key
       })
     }
     
     // LM Studio configuration
-    if (env.LM_STUDIO_BASE_URL) {
+    if (env.VITE_LM_STUDIO_BASE_URL) {
       this.configs.set('lmstudio', {
-        baseUrl: env.LM_STUDIO_BASE_URL,
+        baseUrl: env.VITE_LM_STUDIO_BASE_URL,
         apiKey: '', // LM Studio doesn't require API key
       })
     }

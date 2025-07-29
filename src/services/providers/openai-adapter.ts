@@ -1,7 +1,7 @@
 import { AIModel, AIProviderAdapter, AIProviderConfig } from '@/types/ai-models'
 
 export class OpenAIAdapter implements AIProviderAdapter {
-  async sendRequest(text: string, prompt: string, config: AIProviderConfig, modelName?: string): Promise<string> {
+  async sendRequest(text: string, prompt: string, config: AIProviderConfig): Promise<string> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -52,7 +52,7 @@ export class OpenAIAdapter implements AIProviderAdapter {
 
   getModelInfo(): AIModel {
     return {
-      id: 'gpt-4-turbo',
+      id: 'gpt-4-turbo-preview',
       name: 'GPT-4 Turbo',
       provider: 'openai',
       capabilities: ['Text generation', 'Code writing', 'Analysis', 'Creative writing'],
