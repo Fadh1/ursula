@@ -27,6 +27,16 @@ const Index = () => {
     setCurrentHighlight(highlight)
   }
 
+  const handleOpenSidebar = () => {
+    setSidebarOpen(true)
+  }
+
+  const handleTextUpdate = (highlightId: string, newText: string) => {
+    setHighlights(prev => 
+      prev.map(h => h.id === highlightId ? { ...h, text: newText } : h)
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
       {/* Header */}
@@ -72,6 +82,7 @@ const Index = () => {
           <TextEditor 
             onHighlightCreate={handleHighlightCreate}
             activeHighlight={currentHighlight?.id}
+            onOpenSidebar={handleOpenSidebar}
           />
         </div>
         
@@ -97,6 +108,7 @@ const Index = () => {
         currentHighlight={currentHighlight}
         highlights={highlights}
         onSelectHighlight={handleSelectHighlight}
+        onTextUpdate={handleTextUpdate}
       />
       
       {/* Overlay */}

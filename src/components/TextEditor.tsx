@@ -3,7 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { 
@@ -22,6 +22,7 @@ import {
   Highlighter
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import SelectionTooltip from './SelectionTooltip'
 
 interface Highlight {
   id: string
@@ -34,10 +35,13 @@ interface Highlight {
 interface TextEditorProps {
   onHighlightCreate: (highlight: Highlight) => void
   activeHighlight?: string | null
+  onOpenSidebar: () => void
 }
 
-const TextEditor = ({ onHighlightCreate, activeHighlight }: TextEditorProps) => {
+const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextEditorProps) => {
   const [highlightColor, setHighlightColor] = useState('yellow')
+  const [showTooltip, setShowTooltip] = useState(false)
+  const [hasSelection, setHasSelection] = useState(false)
   
   const editor = useEditor({
     extensions: [
@@ -75,7 +79,27 @@ const TextEditor = ({ onHighlightCreate, activeHighlight }: TextEditorProps) => 
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl mx-auto focus:outline-none',
       },
     },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection
+      const hasContent = from !== to
+      setHasSelection(hasContent)
+      setShowTooltip(hasContent)
+    },
   })
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowTooltip(false)
+    }
+
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
+
+  const handleRefine = () => {
+    setShowTooltip(false)
+    onOpenSidebar()
+  }
 
   const addHighlight = useCallback(() => {
     if (!editor) return
@@ -154,7 +178,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight }: TextEditorProps) => 
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto relative">
       {/* Toolbar */}
       <Card className="p-3 mb-4 bg-card/50 backdrop-blur-sm border-border/50 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
@@ -274,6 +298,12 @@ const TextEditor = ({ onHighlightCreate, activeHighlight }: TextEditorProps) => 
           className="min-h-[500px]"
         />
       </Card>
+
+      {/* Selection Tooltip */}
+      <SelectionTooltip
+        visible={showTooltip && hasSelection}
+        onRefine={handleRefine}
+      />
     </div>
   )
 }

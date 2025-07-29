@@ -5,15 +5,20 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   X, 
   Send, 
   MessageCircle, 
   Sparkles, 
   Clock,
-  Hash
+  Hash,
+  CheckCircle,
+  Eye,
+  PlusCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import DiffView from './DiffView'
 
 interface Highlight {
   id: string
@@ -36,6 +41,7 @@ interface HighlightSidebarProps {
   currentHighlight: Highlight | null
   highlights: Highlight[]
   onSelectHighlight: (highlight: Highlight) => void
+  onTextUpdate: (highlightId: string, newText: string) => void
 }
 
 const HighlightSidebar = ({ 
@@ -43,37 +49,71 @@ const HighlightSidebar = ({
   onClose, 
   currentHighlight, 
   highlights,
-  onSelectHighlight 
+  onSelectHighlight,
+  onTextUpdate
 }: HighlightSidebarProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [mode, setMode] = useState<'options' | 'freeform' | 'diff'>('options')
+  const [suggestedText, setSuggestedText] = useState('')
+  const [currentOperation, setCurrentOperation] = useState('')
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || !currentHighlight) return
-
-    const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      content: inputValue,
-      sender: 'user',
-      timestamp: new Date()
-    }
-
-    setMessages(prev => [...prev, userMessage])
-    setInputValue('')
+  const handleOptionSelect = (option: 'verify' | 'expand') => {
+    if (!currentHighlight) return
+    
     setIsLoading(true)
-
-    // Simulate AI response
+    setCurrentOperation(option)
+    
+    // Simulate AI processing
     setTimeout(() => {
-      const aiMessage: ChatMessage = {
-        id: `msg-${Date.now()}-ai`,
-        content: `I can see you've highlighted: "${currentHighlight.text}". This is an interesting passage! Here are some thoughts about it:\n\n• The highlighted text appears to focus on key concepts\n• This could be expanded with additional context\n• Consider how this relates to the broader document theme\n\nWhat specific aspect would you like to explore further?`,
-        sender: 'ai',
-        timestamp: new Date()
+      let newText = ''
+      if (option === 'verify') {
+        newText = `${currentHighlight.text} [Verified: This information appears accurate based on current knowledge]`
+      } else {
+        newText = `${currentHighlight.text} Additionally, this concept relates to broader themes and can be further explored through multiple perspectives and applications.`
       }
-      setMessages(prev => [...prev, aiMessage])
+      
+      setSuggestedText(newText)
+      setMode('diff')
       setIsLoading(false)
-    }, 1000)
+    }, 1500)
+  }
+
+  const handleFreeformSubmit = () => {
+    if (!inputValue.trim() || !currentHighlight) return
+    
+    setIsLoading(true)
+    setCurrentOperation('custom')
+    
+    // Simulate AI processing the custom request
+    setTimeout(() => {
+      const newText = `${currentHighlight.text} [Modified based on: "${inputValue}"]`
+      setSuggestedText(newText)
+      setMode('diff')
+      setInputValue('')
+      setIsLoading(false)
+    }, 1500)
+  }
+
+  const handleAcceptChanges = () => {
+    if (currentHighlight && suggestedText) {
+      onTextUpdate(currentHighlight.id, suggestedText)
+      setMode('options')
+      setSuggestedText('')
+      setCurrentOperation('')
+    }
+  }
+
+  const handleRejectChanges = () => {
+    setMode('options')
+    setSuggestedText('')
+    setCurrentOperation('')
+  }
+
+  const resetToOptions = () => {
+    setMode('options')
+    setInputValue('')
   }
 
   const formatTime = (date: Date) => {
@@ -143,90 +183,117 @@ const HighlightSidebar = ({
           </div>
         )}
 
-        {/* Chat Messages */}
+        {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           <ScrollArea className="flex-1 p-4">
-            {messages.length === 0 && currentHighlight && (
-              <div className="text-center text-muted-foreground py-8">
-                <MessageCircle className="mx-auto mb-3 opacity-50" size={32} />
-                <p className="text-sm">Start a conversation about this highlight!</p>
-                <p className="text-xs mt-1">Ask questions, request analysis, or explore ideas.</p>
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex",
-                    message.sender === 'user' ? "justify-end" : "justify-start"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "max-w-[85%] p-3 rounded-lg text-sm",
-                      message.sender === 'user'
-                        ? "bg-primary text-primary-foreground ml-4"
-                        : "bg-muted border mr-4"
-                    )}
-                  >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
-                    <div className={cn(
-                      "text-xs mt-1 opacity-70",
-                      message.sender === 'user' ? "text-right" : "text-left"
-                    )}>
-                      {formatTime(message.timestamp)}
+            {currentHighlight && (
+              <div className="space-y-4">
+                {/* Mode: Options */}
+                {mode === 'options' && (
+                  <div className="space-y-4">
+                    <div className="text-center text-muted-foreground py-4">
+                      <Sparkles className="mx-auto mb-3 opacity-50" size={32} />
+                      <p className="text-sm font-medium mb-1">How would you like to refine this text?</p>
+                      <p className="text-xs">Choose an option below or create a custom request.</p>
+                    </div>
+
+                    {/* Default Options */}
+                    <div className="grid gap-3">
+                      <Button
+                        onClick={() => handleOptionSelect('verify')}
+                        variant="outline"
+                        className="flex items-center gap-3 p-4 h-auto text-left justify-start"
+                        disabled={isLoading}
+                      >
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <CheckCircle size={20} className="text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">Verify</div>
+                          <div className="text-xs text-muted-foreground">Check accuracy and add verification notes</div>
+                        </div>
+                      </Button>
+
+                      <Button
+                        onClick={() => handleOptionSelect('expand')}
+                        variant="outline"
+                        className="flex items-center gap-3 p-4 h-auto text-left justify-start"
+                        disabled={isLoading}
+                      >
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <PlusCircle size={20} className="text-green-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">Expand</div>
+                          <div className="text-xs text-muted-foreground">Add more detail and context</div>
+                        </div>
+                      </Button>
+                    </div>
+
+                    <Separator className="my-4" />
+
+                    {/* Custom Request */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium">Custom Request</h4>
+                      <Textarea
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder="Describe how you'd like to modify this text..."
+                        className="min-h-[80px] bg-background"
+                        disabled={isLoading}
+                      />
+                      <Button
+                        onClick={handleFreeformSubmit}
+                        disabled={!inputValue.trim() || isLoading}
+                        className="w-full"
+                      >
+                        <Send size={16} className="mr-2" />
+                        Generate Changes
+                      </Button>
                     </div>
                   </div>
-                </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted border mr-4 p-3 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                )}
+
+                {/* Mode: Diff View */}
+                {mode === 'diff' && suggestedText && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium">Review Changes</h4>
+                      <Button
+                        onClick={resetToOptions}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Back to Options
+                      </Button>
+                    </div>
+                    
+                    <DiffView
+                      originalText={currentHighlight.text}
+                      suggestedText={suggestedText}
+                      onAccept={handleAcceptChanges}
+                      onReject={handleRejectChanges}
+                      operation={currentOperation}
+                    />
+                  </div>
+                )}
+
+                {/* Loading State */}
+                {isLoading && (
+                  <div className="text-center py-8">
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                       <div className="flex gap-1">
                         <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
                         <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
                         <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                       </div>
-                      AI is thinking...
+                      Processing your request...
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          {/* Input Area */}
-          {currentHighlight && (
-            <div className="p-4 border-t border-sidebar-border bg-background/50">
-              <div className="flex gap-2">
-                <Input
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask AI about this highlight..."
-                  className="flex-1 bg-background"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleSendMessage()
-                    }
-                  }}
-                  disabled={isLoading}
-                />
-                <Button 
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || isLoading}
-                  size="sm"
-                  className="px-3"
-                >
-                  <Send size={16} />
-                </Button>
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </ScrollArea>
         </div>
 
         {/* All Highlights */}
