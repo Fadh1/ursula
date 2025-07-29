@@ -231,7 +231,7 @@ const HighlightSidebar = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="text-primary" size={20} />
-              <h3 className="font-semibold text-foreground">AI Highlights</h3>
+              <h3 className="font-semibold text-foreground">Refine</h3>
             </div>
             <div className="flex items-center gap-2">
               <Button 
@@ -252,16 +252,6 @@ const HighlightSidebar = ({
               </Button>
             </div>
           </div>
-          {currentHighlight && (
-            <div className="mt-2">
-              <Badge 
-                variant="outline" 
-                className={cn("text-xs", getColorBadgeClass(currentHighlight.color))}
-              >
-                {currentHighlight.color} highlight
-              </Badge>
-            </div>
-          )}
         </div>
 
         {/* Current Highlight */}
@@ -273,10 +263,6 @@ const HighlightSidebar = ({
             </div>
             <div className="text-sm bg-muted/50 p-3 rounded-lg border">
               "{currentHighlight.text}"
-            </div>
-            <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-              <Clock size={12} />
-              {formatTime(currentHighlight.timestamp)}
             </div>
           </div>
         )}
@@ -487,42 +473,6 @@ const HighlightSidebar = ({
             </TabsContent>
           </Tabs>
         </div>
-
-        {/* All Highlights */}
-        {highlights.length > 0 && (
-          <div className="border-t border-sidebar-border bg-background/30">
-            <div className="p-3">
-              <h4 className="text-sm font-medium text-foreground mb-2">All Highlights ({highlights.length})</h4>
-              <ScrollArea className="max-h-32">
-                <div className="space-y-2">
-                  {highlights.map((highlight) => (
-                    <button
-                      key={highlight.id}
-                      onClick={() => onSelectHighlight(highlight)}
-                      className={cn(
-                        "w-full text-left p-2 rounded text-xs border transition-all duration-200 hover:bg-muted/50",
-                        currentHighlight?.id === highlight.id 
-                          ? "bg-primary/10 border-primary/30" 
-                          : "bg-background border-border"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className={cn(
-                          "w-2 h-2 rounded-full",
-                          getColorBadgeClass(highlight.color)
-                        )} />
-                        <span className="text-muted-foreground">{formatTime(highlight.timestamp)}</span>
-                      </div>
-                      <div className="truncate text-foreground">
-                        "{highlight.text}"
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-        )}
       </div>
       
       {/* API Key Configuration Dialog */}
