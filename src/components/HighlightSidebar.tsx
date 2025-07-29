@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   X, 
   Send, 
@@ -15,10 +16,19 @@ import {
   Hash,
   CheckCircle,
   Eye,
-  PlusCircle
+  PlusCircle,
+  History,
+  Settings,
+  AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import DiffView from './DiffView'
+import { ModelSelector } from './ModelSelector'
+import { ApiKeyDialog } from './ApiKeyDialog'
+import { AIModel, AIHistoryEntry } from '@/types/ai-models'
+import { aiService } from '@/services/ai-service'
+import { useAIHistory } from '@/hooks/use-ai-history'
+import { useToast } from '@/hooks/use-toast'
 
 interface Highlight {
   id: string
@@ -58,42 +68,120 @@ const HighlightSidebar = ({
   const [mode, setMode] = useState<'options' | 'freeform' | 'diff'>('options')
   const [suggestedText, setSuggestedText] = useState('')
   const [currentOperation, setCurrentOperation] = useState('')
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
+  const [availableModels, setAvailableModels] = useState<AIModel[]>([])
+  const [promptValue, setPromptValue] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
+  
+  const { history, addEntry, updateEntry } = useAIHistory()
+  const { toast } = useToast()
 
-  const handleOptionSelect = (option: 'verify' | 'expand') => {
-    if (!currentHighlight) return
+  useEffect(() => {
+    const models = aiService.getAvailableModels()
+    setAvailableModels(models)
+    const defaultModel = models.find(m => m.isDefault) || models[0]
+    setSelectedModel(defaultModel)
+  }, [])
+
+  const handleOptionSelect = async (option: 'verify' | 'expand') => {
+    if (!currentHighlight || !selectedModel) return
     
     setIsLoading(true)
     setCurrentOperation(option)
     
-    // Simulate AI processing
-    setTimeout(() => {
-      let newText = ''
-      if (option === 'verify') {
-        newText = `${currentHighlight.text} [Verified: This information appears accurate based on current knowledge]`
-      } else {
-        newText = `${currentHighlight.text} Additionally, this concept relates to broader themes and can be further explored through multiple perspectives and applications.`
+    const prompt = option === 'verify' 
+      ? 'Verify this text and add a brief verification note if accurate'
+      : 'Expand this text with more detail and context'
+    
+    try {
+      const response = await aiService.sendToAI(
+        currentHighlight.text,
+        prompt,
+        selectedModel
+      )
+      
+      if (response.error) {
+        toast({
+          title: 'Error',
+          description: response.error,
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
       }
       
-      setSuggestedText(newText)
+      const historyEntry: AIHistoryEntry = {
+        id: crypto.randomUUID(),
+        highlightId: currentHighlight.id,
+        text: currentHighlight.text,
+        prompt,
+        model: selectedModel,
+        timestamp: new Date(),
+        response,
+        applied: false,
+      }
+      
+      addEntry(historyEntry)
+      setSuggestedText(response.suggestedText)
       setMode('diff')
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to process AI request',
+        variant: 'destructive',
+      })
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
-  const handleFreeformSubmit = () => {
-    if (!inputValue.trim() || !currentHighlight) return
+  const handleFreeformSubmit = async () => {
+    if (!promptValue.trim() || !currentHighlight || !selectedModel) return
     
     setIsLoading(true)
     setCurrentOperation('custom')
     
-    // Simulate AI processing the custom request
-    setTimeout(() => {
-      const newText = `${currentHighlight.text} [Modified based on: "${inputValue}"]`
-      setSuggestedText(newText)
+    try {
+      const response = await aiService.sendToAI(
+        currentHighlight.text,
+        promptValue,
+        selectedModel
+      )
+      
+      if (response.error) {
+        toast({
+          title: 'Error',
+          description: response.error,
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
+      }
+      
+      const historyEntry: AIHistoryEntry = {
+        id: crypto.randomUUID(),
+        highlightId: currentHighlight.id,
+        text: currentHighlight.text,
+        prompt: promptValue,
+        model: selectedModel,
+        timestamp: new Date(),
+        response,
+        applied: false,
+      }
+      
+      addEntry(historyEntry)
+      setSuggestedText(response.suggestedText)
       setMode('diff')
-      setInputValue('')
+      setPromptValue('')
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to process AI request',
+        variant: 'destructive',
+      })
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   const handleAcceptChanges = () => {
@@ -145,14 +233,24 @@ const HighlightSidebar = ({
               <Sparkles className="text-primary" size={20} />
               <h3 className="font-semibold text-foreground">AI Highlights</h3>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onClose}
-              className="h-8 w-8 p-0 hover:bg-sidebar-border"
-            >
-              <X size={16} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowSettings(!showSettings)}
+                className="h-8 w-8 p-0 hover:bg-sidebar-border"
+              >
+                <Settings size={16} />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onClose}
+                className="h-8 w-8 p-0 hover:bg-sidebar-border"
+              >
+                <X size={16} />
+              </Button>
+            </div>
           </div>
           {currentHighlight && (
             <div className="mt-2">
@@ -183,9 +281,36 @@ const HighlightSidebar = ({
           </div>
         )}
 
+        {/* AI Model Selection */}
+        <div className="p-4 border-b border-sidebar-border bg-background/50">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">AI Model</span>
+            <ModelSelector
+              onModelSelect={setSelectedModel}
+              currentModel={selectedModel}
+              availableModels={availableModels}
+            />
+          </div>
+        </div>
+
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 p-4">
+          <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="chat">Chat</TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center gap-2">
+                <History size={14} />
+                History
+                {history.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1 text-xs">
+                    {history.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="chat" className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full p-4">
             {currentHighlight && (
               <div className="space-y-4">
                 {/* Mode: Options */}
@@ -236,15 +361,25 @@ const HighlightSidebar = ({
                     <div className="space-y-3">
                       <h4 className="text-sm font-medium">Custom Request</h4>
                       <Textarea
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        value={promptValue}
+                        onChange={(e) => setPromptValue(e.target.value)}
                         placeholder="Describe how you'd like to modify this text..."
                         className="min-h-[80px] bg-background"
                         disabled={isLoading}
+                        maxLength={500}
                       />
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{promptValue.length}/500 characters</span>
+                        {!selectedModel && (
+                          <span className="text-destructive flex items-center gap-1">
+                            <AlertCircle size={12} />
+                            No model selected
+                          </span>
+                        )}
+                      </div>
                       <Button
                         onClick={handleFreeformSubmit}
-                        disabled={!inputValue.trim() || isLoading}
+                        disabled={!promptValue.trim() || isLoading || !selectedModel}
                         className="w-full"
                       >
                         <Send size={16} className="mr-2" />
@@ -293,7 +428,64 @@ const HighlightSidebar = ({
                 )}
               </div>
             )}
-          </ScrollArea>
+              </ScrollArea>
+            </TabsContent>
+            
+            <TabsContent value="history" className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full p-4">
+                {history.length === 0 ? (
+                  <div className="text-center py-8">
+                    <History className="mx-auto mb-3 opacity-30" size={32} />
+                    <p className="text-sm text-muted-foreground">No AI requests yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {history.map((entry) => (
+                      <Card 
+                        key={entry.id} 
+                        className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          if (currentHighlight?.id === entry.highlightId) {
+                            setPromptValue(entry.prompt)
+                            toast({
+                              title: 'Prompt loaded',
+                              description: 'Previous prompt has been loaded',
+                            })
+                          }
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline" className="text-xs">
+                                {entry.model.name}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(entry.timestamp)}
+                              </span>
+                              {entry.applied && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Applied
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-1">Prompt:</p>
+                            <p className="text-sm line-clamp-2">{entry.prompt}</p>
+                            {entry.response.error && (
+                              <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                                <AlertCircle size={12} />
+                                {entry.response.error}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* All Highlights */}
@@ -332,6 +524,13 @@ const HighlightSidebar = ({
           </div>
         )}
       </div>
+      
+      {/* API Key Configuration Dialog */}
+      <ApiKeyDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        availableModels={availableModels}
+      />
     </div>
   )
 }
