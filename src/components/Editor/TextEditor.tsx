@@ -3,7 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { 
@@ -24,7 +24,10 @@ import {
 import { cn } from '@/lib/utils'
 import SelectionTooltip from './SelectionTooltip'
 import InEditorDiff from './InEditorDiff'
-import { DiffContext } from '@/types/ai-models'
+import { DiffContext, AIModel, TextContext } from '@/types/ai-models'
+import { nanoContextService } from '@/services/nano-context-service'
+import { aiService } from '@/services/ai-service'
+import { useNanoContext } from '@/hooks/use-nano-context'
 
 interface Highlight {
   id: string
@@ -59,9 +62,21 @@ const TextEditor = ({
   const [isRefining, setIsRefining] = useState(false)
   const [refineSelection, setRefineSelection] = useState<{from: number, to: number} | null>(null)
   const [diffSelection, setDiffSelection] = useState<{ from: number; to: number } | null>(null)
+  
+  // Nano context state
+  const [previousContent, setPreviousContent] = useState<string>('')
+  const [currentContext, setCurrentContext] = useState<TextContext | null>(null)
+  const [contextUpdateTimer, setContextUpdateTimer] = useState<NodeJS.Timeout | null>(null)
+  const [availableModels, setAvailableModels] = useState<AIModel[]>([])
+  const [defaultModel, setDefaultModel] = useState<AIModel | null>(null)
+  
+  const { addContext, getStorageStats } = useNanoContext()
 
   // localStorage key for saving editor content
   const STORAGE_KEY = 'text-editor-content'
+  
+  // Debounce delay for context updates (in milliseconds)
+  const CONTEXT_UPDATE_DELAY = 2000
 
   // Load content from localStorage
   const loadSavedContent = () => {
@@ -144,6 +159,10 @@ const TextEditor = ({
       // Auto-save content to localStorage whenever it changes
       const json = editor.getJSON()
       saveContent(json)
+      
+      // Handle nano context updates
+      const textContent = editor.getText()
+      handleContextUpdate(textContent)
     },
     editorProps: {
       attributes: {
@@ -154,14 +173,6 @@ const TextEditor = ({
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection
       const hasContent = from !== to
-      
-      // If we're in refine mode and the selection is lost, restore it
-      if (isRefining && !hasContent && refineSelection) {
-        setTimeout(() => {
-          editor.chain().focus().setTextSelection(refineSelection).run()
-        }, 10)
-        return
-      }
       
       // Normal selection handling
       setHasSelection(hasContent)
@@ -174,43 +185,133 @@ const TextEditor = ({
     },
   })
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // Don't dismiss if clicking on the tooltip itself
-      const tooltipElement = document.querySelector('[data-selection-tooltip]')
-      if (tooltipElement?.contains(event.target as Node)) {
-        return
-      }
-      
-      // Don't dismiss if clicking on the sidebar
-      const sidebarElement = event.target as HTMLElement
-      if (sidebarElement.closest('[class*="fixed right-0"]') || 
-          sidebarElement.closest('[data-sidebar]')) {
-        return
-      }
-      
-      // If clicking on main page while refining, exit refine mode
-      if (isRefining) {
-        setIsRefining(false)
-        setRefineSelection(null)
-        // Clear the selection
-        if (editor) {
-          editor.chain().focus().setTextSelection(editor.state.selection.to).run()
-        }
-        return
-      }
-      
-      // Don't dismiss if there's still an active selection and we have an editor
-      if (hasSelection && editor?.state.selection.from !== editor?.state.selection.to) {
-        return
-      }
-      
-      setShowTooltip(false)
+  const exitRefineMode = useCallback(() => {
+    if (isRefining && editor && refineSelection) {
+      // Remove the refine highlight
+      editor.chain()
+        .focus()
+        .setTextSelection(refineSelection)
+        .unsetHighlight()
+        .setTextSelection(editor.state.selection.to) // Clear selection
+        .run()
     }
+    
+    setIsRefining(false)
+    setRefineSelection(null)
+  }, [isRefining, editor, refineSelection])
 
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    // Don't dismiss if clicking on the tooltip itself
+    const tooltipElement = document.querySelector('[data-selection-tooltip]')
+    if (tooltipElement?.contains(event.target as Node)) {
+      return
+    }
+    
+    // Don't dismiss if clicking on the sidebar
+    const sidebarElement = event.target as HTMLElement
+    if (sidebarElement.closest('[class*="fixed right-0"]') || 
+        sidebarElement.closest('[data-sidebar]') ||
+        sidebarElement.closest('[data-radix-popper-content-wrapper]')) {
+      return
+    }
+    
+    // If clicking on main page while refining, exit refine mode
+    if (isRefining) {
+      exitRefineMode()
+      return
+    }
+    
+    // Don't dismiss if there's still an active selection and we have an editor
+    if (hasSelection && editor?.state.selection.from !== editor?.state.selection.to) {
+      return
+    }
+    
+    setShowTooltip(false)
+  }, [hasSelection, editor, isRefining, exitRefineMode])
+
+  useEffect(() => {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [hasSelection, editor, isRefining])
+  }, [handleClickOutside])
+
+  // Load available AI models on component mount
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const models = await aiService.getAvailableModels()
+        setAvailableModels(models)
+        const defaultModel = models.find(m => m.isDefault) || models[0]
+        setDefaultModel(defaultModel)
+        
+        // If we have an editor with content, try to get initial context
+        if (editor && defaultModel) {
+          const textContent = editor.getText()
+          if (textContent.trim().length > 50) {
+            // Try to get existing context from storage first
+            const { createTextHash } = await import('@/lib/jaccard-similarity')
+            const textHash = createTextHash(textContent)
+            const existingContext = nanoContextService.getContextForText(textHash)
+            
+            if (existingContext) {
+              setCurrentContext(existingContext)
+              console.log('Loaded existing context for current text')
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load AI models:', error)
+      }
+    }
+    
+    loadModels()
+  }, [editor])
+
+  // Handle context updates with debouncing
+  const handleContextUpdate = useCallback(async (newContent: string) => {
+    if (!defaultModel || !newContent.trim()) {
+      return
+    }
+    
+    // Clear existing timer
+    if (contextUpdateTimer) {
+      clearTimeout(contextUpdateTimer)
+    }
+    
+    // Set new timer for debounced update
+    const timer = setTimeout(async () => {
+      try {
+        // Check if content has changed significantly
+        await nanoContextService.checkAndUpdateContext(
+          newContent,
+          previousContent,
+          defaultModel,
+          (context: TextContext) => {
+            setCurrentContext(context)
+            // Store in localStorage for persistence
+            addContext(context)
+            console.log('Context updated:', context.description.substring(0, 50) + '...')
+          }
+        )
+        
+        // Update previous content for next comparison
+        setPreviousContent(newContent)
+        
+      } catch (error) {
+        console.error('Context update failed:', error)
+      }
+    }, CONTEXT_UPDATE_DELAY)
+    
+    setContextUpdateTimer(timer)
+  }, [defaultModel, previousContent, contextUpdateTimer, addContext])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (contextUpdateTimer) {
+        clearTimeout(contextUpdateTimer)
+      }
+    }
+  }, [contextUpdateTimer])
 
 
   const handleRefine = () => {
@@ -220,26 +321,30 @@ const TextEditor = ({
     const selectedText = editor.state.doc.textBetween(from, to, ' ')
     
     if (selectedText.trim()) {
+      // Apply visual highlight to the selected text
+      const highlightId = `refine-${Date.now()}`
+      
+      editor.chain()
+        .focus()
+        .setTextSelection({ from, to })
+        .setHighlight({ color: 'rgba(59, 130, 246, 0.3)' }) // Blue highlight for refine
+        .run()
+      
       // Enter refine mode and store the selection
       setIsRefining(true)
       setRefineSelection({ from, to })
       
       // Create highlight object for the selected text
       const highlight: Highlight = {
-        id: `refine-${Date.now()}`,
+        id: highlightId,
         text: selectedText,
-        color: 'blue', // Default color for refine highlights
+        color: 'blue',
         position: { from, to },
         timestamp: new Date()
       }
 
       // Create the highlight and open sidebar
       onHighlightCreate(highlight)
-      
-      // Keep the editor focused and maintain the selection
-      setTimeout(() => {
-        editor.chain().focus().setTextSelection({ from, to }).run()
-      }, 100)
     }
     
     setShowTooltip(false)

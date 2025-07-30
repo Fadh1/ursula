@@ -91,6 +91,11 @@ const Index = () => {
     setDiffData(null)
   }
 
+  const handleSidebarClose = () => {
+    setSidebarOpen(false)
+    setCurrentHighlight(null)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex">
       {/* Main Content Area */}
@@ -98,18 +103,6 @@ const Index = () => {
         "transition-all duration-300 ease-in-out",
         sidebarOpen ? "w-[60%]" : "w-full"
       )}>
-        {/* Floating Open Chat Button */}
-        <div className="fixed top-6 right-6 z-50">
-          <Button
-            variant={sidebarOpen ? "default" : "outline"}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="gap-2 shadow-lg backdrop-blur-sm bg-background/80 hover:bg-background/90 border-border/50"
-          >
-            <MessageCircle size={16} />
-            {sidebarOpen ? 'Close Chat' : 'Open Chat'}
-          </Button>
-        </div>
-
         {/* Main Content */}
         <main className="container mx-auto px-4 py-12 h-screen overflow-y-auto">
           <div className="flex justify-center">
@@ -131,7 +124,7 @@ const Index = () => {
         <div className="w-[40%] h-screen overflow-hidden">
           <HighlightSidebar
             isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
+            onClose={handleSidebarClose}
             currentHighlight={currentHighlight}
             highlights={highlights}
             onSelectHighlight={handleSelectHighlight}
