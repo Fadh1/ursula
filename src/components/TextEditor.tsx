@@ -58,6 +58,7 @@ const TextEditor = ({
   const [hasSelection, setHasSelection] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [refineSelection, setRefineSelection] = useState<{from: number, to: number} | null>(null)
+  const [diffSelection, setDiffSelection] = useState<{ from: number; to: number } | null>(null)
 
   // localStorage key for saving editor content
   const STORAGE_KEY = 'text-editor-content'
@@ -165,6 +166,11 @@ const TextEditor = ({
       // Normal selection handling
       setHasSelection(hasContent)
       setShowTooltip(hasContent && !isRefining) // Don't show tooltip if already refining
+      
+      // Store selection for diff if we have diff data
+      if (diffData && hasContent) {
+        setDiffSelection({ from, to })
+      }
     },
   })
 
@@ -438,20 +444,42 @@ const TextEditor = ({
         />
         
         {/* In-Editor Diff Overlay */}
-        {diffData && onDiffAccept && onDiffReject && (
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full">
-              <InEditorDiff
-                originalText={diffData.original}
-                suggestedText={diffData.suggested}
-                onAccept={onDiffAccept}
-                onReject={onDiffReject}
-                onUndo={onDiffUndo}
-                context={diffData.context}
-                className="mx-auto"
-              />
-            </div>
-          </div>
+        {diffData && onDiffAccept && onDiffReject && diffSelection && (
+          <InEditorDiff
+            originalText={diffData.original}
+            suggestedText={diffData.suggested}
+            onAccept={() => {
+              if (editor && diffSelection) {
+                // Replace the selected text with the suggested text
+                editor.chain()
+                  .focus()
+                  .setTextSelection(diffSelection)
+                  .deleteSelection()
+                  .insertContent(diffData.suggested)
+                  .run()
+              }
+              onDiffAccept()
+            }}
+            onReject={onDiffReject}
+            onUndo={onDiffUndo}
+            context={diffData.context}
+            position={(() => {
+              if (!editor || !diffSelection) return undefined
+              try {
+                const coords = editor.view.coordsAtPos(diffSelection.from)
+                const endCoords = editor.view.coordsAtPos(diffSelection.to)
+                if (coords && endCoords) {
+                  return {
+                    top: coords.bottom + 10,
+                    left: coords.left + (endCoords.left - coords.left) / 2
+                  }
+                }
+              } catch (e) {
+                console.error('Error getting diff position:', e)
+              }
+              return undefined
+            })()}
+          />
         )}
       </div>
 
