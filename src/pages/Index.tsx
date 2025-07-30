@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import TextEditor from '@/components/TextEditor'
-import HighlightSidebar from '@/components/HighlightSidebar'
+import TextEditor from '@/components/Editor/TextEditor'
+import HighlightSidebar from '@/components/Sidebar/HighlightSidebar'
 import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'

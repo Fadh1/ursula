@@ -12,9 +12,8 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import InEditorDiff from './InEditorDiff'
+import InEditorDiff from '../Editor/InEditorDiff'
 import ActionPanel from './ActionPanel'
-import RewordDropdown from './RewordDropdown'
 import { ModelSelector } from './ModelSelector'
 import { AIModel, AIHistoryEntry, ActionType, ActionOptions, SmartSuggestion, DiffContext } from '@/types/ai-models'
 import { aiService } from '@/services/ai-service'
