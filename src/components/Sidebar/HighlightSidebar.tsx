@@ -15,11 +15,18 @@ import { cn } from '@/lib/utils'
 import InEditorDiff from '../Editor/InEditorDiff'
 import ActionPanel from './ActionPanel'
 import { ModelSelector } from './ModelSelector'
-import { AIModel, AIHistoryEntry, ActionType, ActionOptions, SmartSuggestion, DiffContext } from '@/types/ai-models'
+import { AIModel, AIHistoryEntry, ActionType, ActionOptions, SmartSuggestion, DiffContext, TextContext } from '@/types/ai-models'
 import { aiService } from '@/services/ai-service'
 import { smartSuggestionsService } from '@/services/smart-suggestions'
 import { useAIHistory } from '@/hooks/use-ai-history'
 import { useToast } from '@/hooks/use-toast'
+import { nanoContextService } from '@/services/nano-context-service'
+import { createTextHash } from '@/lib/jaccard-similarity'
+import { 
+  generateContextAwareActionPrompt, 
+  enhanceCustomPrompt,
+  isContextSuitableForPrompts 
+} from '@/lib/enhanced-prompt-builder'
 
 interface Highlight {
   id: string
@@ -63,6 +70,7 @@ const HighlightSidebar = ({
   const [availableModels, setAvailableModels] = useState<AIModel[]>([])
   const [smartSuggestion, setSmartSuggestion] = useState<SmartSuggestion | null>(null)
   const [undoStack, setUndoStack] = useState<{ text: string; context: DiffContext }[]>([])
+  const [textContext, setTextContext] = useState<TextContext | null>(null)
   
   const { history, addEntry } = useAIHistory()
   const { toast } = useToast()
@@ -94,6 +102,42 @@ const HighlightSidebar = ({
         })
     } else {
       setSmartSuggestion(null)
+    }
+  }, [currentHighlight, selectedModel])
+
+  // Load text context when highlight changes
+  useEffect(() => {
+    if (currentHighlight) {
+      // Try to get existing context for this text
+      const textHash = createTextHash(currentHighlight.text)
+      const existingContext = nanoContextService.getContextForText(textHash)
+      
+      if (existingContext && isContextSuitableForPrompts(existingContext)) {
+        setTextContext(existingContext)
+        console.log('Loaded context for highlight:', existingContext.description.substring(0, 50) + '...')
+      } else {
+        // Generate new context if none exists and we have a model
+        if (selectedModel && currentHighlight.text.length > 20) {
+          console.log('Generating new context for highlight...')
+          nanoContextService.generateContextForText(currentHighlight.text, selectedModel)
+            .then(newContext => {
+              if (newContext && isContextSuitableForPrompts(newContext)) {
+                setTextContext(newContext)
+                console.log('Generated new context:', newContext.description.substring(0, 50) + '...')
+              } else {
+                setTextContext(null)
+              }
+            })
+            .catch(error => {
+              console.error('Failed to generate context:', error)
+              setTextContext(null)
+            })
+        } else {
+          setTextContext(null)
+        }
+      }
+    } else {
+      setTextContext(null)
     }
   }, [currentHighlight, selectedModel])
 
@@ -174,37 +218,23 @@ const HighlightSidebar = ({
   }
 
   const generatePrompt = (action: ActionType, options?: ActionOptions): string => {
-    switch (action) {
-      case 'verify':
-        return 'Verify this text for accuracy and add a brief verification note if accurate, or point out any concerns if inaccurate.'
-      case 'expand':
-        return 'Expand this text with more detail, context, and supporting information while maintaining the original meaning.'
-      case 'reword':
-        if (options?.customPrompt) {
-          return options.customPrompt
-        }
-        if (options?.rewordType === 'concise') {
-          return 'Make this text more concise by removing unnecessary words while preserving all key information.'
-        }
-        if (options?.rewordType === 'flesh_out') {
-          return 'Flesh out this text with more detailed explanations, examples, and supporting context.'
-        }
-        if (options?.rewordType === 'tone' && options?.tone) {
-          return `Rewrite this text in a ${options.tone} tone while maintaining the same information and key points.`
-        }
-        if (options?.rewordType === 'simplify') {
-          return 'Simplify this text using clearer, more accessible language while maintaining the original meaning.'
-        }
-        if (options?.rewordType === 'engaging') {
-          return 'Rewrite this text to be more engaging and compelling while keeping the same information.'
-        }
-        if (options?.rewordType === 'audience' && options?.audience) {
-          return `Adjust this text for a ${options.audience} audience, using appropriate language and level of detail.`
-        }
-        return 'Rewrite this text to improve clarity, flow, and readability.'
-      default:
-        return 'Improve this text as appropriate.'
+    // Handle custom prompts with context enhancement
+    if (action === 'reword' && options?.customPrompt) {
+      return enhanceCustomPrompt(options.customPrompt, textContext)
     }
+    
+    // Generate context-aware action prompts
+    const enhancedPrompt = generateContextAwareActionPrompt(action, options, textContext)
+    
+    // If no context enhancement was applied, fall back to original logic
+    if (!textContext || !isContextSuitableForPrompts(textContext)) {
+      return enhancedPrompt
+    }
+    
+    // Log context usage for debugging
+    console.log(`Using context for ${action} action:`, textContext.description.substring(0, 50) + '...')
+    
+    return enhancedPrompt
   }
 
   const handleAcceptChanges = () => {
@@ -287,11 +317,22 @@ const HighlightSidebar = ({
           <div className="p-4 border-b border-sidebar-border bg-card/30">
             <div className="flex items-start gap-2 mb-2">
               <Hash className="text-muted-foreground mt-1 flex-shrink-0" size={14} />
-              <div className="text-sm text-muted-foreground">Selected Text:</div>
+              <div className="text-sm text-muted-foreground">Selected text</div>
             </div>
-            <div className="text-sm bg-muted/50 p-3 rounded-lg border">
-              "{currentHighlight.text}"
+            <div className="text-sm bg-muted/50 p-3 rounded-lg border whitespace-pre-wrap">
+              {currentHighlight.text}
             </div>
+            
+            {/* Context Indicator */}
+            {textContext && isContextSuitableForPrompts(textContext) && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Context available: {textContext.tone} tone, {textContext.intent}</span>
+                <Badge variant="outline" className="text-xs">
+                  {Math.round(textContext.confidence * 100)}% confidence
+                </Badge>
+              </div>
+            )}
           </div>
         )}
 
