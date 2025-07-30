@@ -23,6 +23,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SelectionTooltip from './SelectionTooltip'
+import InEditorDiff from './InEditorDiff'
+import { DiffContext } from '@/types/ai-models'
 
 interface Highlight {
   id: string
@@ -36,14 +38,27 @@ interface TextEditorProps {
   onHighlightCreate: (highlight: Highlight) => void
   activeHighlight?: string | null
   onOpenSidebar: () => void
+  diffData?: { original: string; suggested: string; context: DiffContext } | null
+  onDiffAccept?: () => void
+  onDiffReject?: () => void
+  onDiffUndo?: () => void
 }
 
-const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextEditorProps) => {
+const TextEditor = ({ 
+  onHighlightCreate, 
+  activeHighlight, 
+  onOpenSidebar, 
+  diffData, 
+  onDiffAccept, 
+  onDiffReject, 
+  onDiffUndo 
+}: TextEditorProps) => {
   const [highlightColor, setHighlightColor] = useState('yellow')
   const [showTooltip, setShowTooltip] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [refineSelection, setRefineSelection] = useState<{from: number, to: number} | null>(null)
+  const [diffSelection, setDiffSelection] = useState<{ from: number; to: number } | null>(null)
 
   // localStorage key for saving editor content
   const STORAGE_KEY = 'text-editor-content'
@@ -104,7 +119,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
   }
 
   // Save content to localStorage
-  const saveContent = (content: any) => {
+  const saveContent = (content: object) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(content))
     } catch (error) {
@@ -151,6 +166,11 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       // Normal selection handling
       setHasSelection(hasContent)
       setShowTooltip(hasContent && !isRefining) // Don't show tooltip if already refining
+      
+      // Store selection for diff if we have diff data
+      if (diffData && hasContent) {
+        setDiffSelection({ from, to })
+      }
     },
   })
 
@@ -191,6 +211,7 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [hasSelection, editor, isRefining])
+
 
   const handleRefine = () => {
     if (!editor) return
@@ -416,11 +437,50 @@ const TextEditor = ({ onHighlightCreate, activeHighlight, onOpenSidebar }: TextE
       </Card>
 
       {/* Editor */}
-      <div className="bg-transparent">
+      <div className="bg-transparent relative">
         <EditorContent 
           editor={editor} 
           className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus:border-none [&_.ProseMirror]:focus:ring-0 [&_.ProseMirror]:focus:shadow-none"
         />
+        
+        {/* In-Editor Diff Overlay */}
+        {diffData && onDiffAccept && onDiffReject && diffSelection && (
+          <InEditorDiff
+            originalText={diffData.original}
+            suggestedText={diffData.suggested}
+            onAccept={() => {
+              if (editor && diffSelection) {
+                // Replace the selected text with the suggested text
+                editor.chain()
+                  .focus()
+                  .setTextSelection(diffSelection)
+                  .deleteSelection()
+                  .insertContent(diffData.suggested)
+                  .run()
+              }
+              onDiffAccept()
+            }}
+            onReject={onDiffReject}
+            onUndo={onDiffUndo}
+            context={diffData.context}
+            position={(() => {
+              if (!editor || !diffSelection) return undefined
+              try {
+                const coords = editor.view.coordsAtPos(diffSelection.from)
+                const endCoords = editor.view.coordsAtPos(diffSelection.to)
+                if (coords && endCoords) {
+                  return {
+                    top: coords.bottom + 10,
+                    left: coords.left + (endCoords.left - coords.left) / 2
+                  }
+                }
+              } catch (e) {
+                console.error('Error getting diff position:', e)
+              }
+              return undefined
+            })()}
+          />
+        )}
       </div>
 
       {/* Selection Tooltip */}

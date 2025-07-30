@@ -1,30 +1,23 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   X, 
-  Send, 
-  MessageCircle, 
   Sparkles, 
-  Clock,
   Hash,
-  CheckCircle,
-  Eye,
-  PlusCircle,
   History,
   AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import DiffView from './DiffView'
+import InEditorDiff from '../Editor/InEditorDiff'
+import ActionPanel from './ActionPanel'
 import { ModelSelector } from './ModelSelector'
-import { AIModel, AIHistoryEntry } from '@/types/ai-models'
+import { AIModel, AIHistoryEntry, ActionType, ActionOptions, SmartSuggestion, DiffContext } from '@/types/ai-models'
 import { aiService } from '@/services/ai-service'
+import { smartSuggestionsService } from '@/services/smart-suggestions'
 import { useAIHistory } from '@/hooks/use-ai-history'
 import { useToast } from '@/hooks/use-toast'
 
@@ -49,7 +42,8 @@ interface HighlightSidebarProps {
   currentHighlight: Highlight | null
   highlights: Highlight[]
   onSelectHighlight: (highlight: Highlight) => void
-  onTextUpdate: (highlightId: string, newText: string) => void
+  onTextUpdate: (highlightId: string, newText: string, context?: DiffContext) => void
+  onDiffRequest?: (diffData: { original: string; suggested: string; context: DiffContext }) => void
 }
 
 const HighlightSidebar = ({ 
@@ -58,19 +52,19 @@ const HighlightSidebar = ({
   currentHighlight, 
   highlights,
   onSelectHighlight,
-  onTextUpdate
+  onTextUpdate,
+  onDiffRequest
 }: HighlightSidebarProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [mode, setMode] = useState<'options' | 'freeform' | 'diff'>('options')
+  const [mode, setMode] = useState<'actions' | 'diff'>('actions')
   const [suggestedText, setSuggestedText] = useState('')
-  const [currentOperation, setCurrentOperation] = useState('')
+  const [currentContext, setCurrentContext] = useState<DiffContext | null>(null)
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null)
   const [availableModels, setAvailableModels] = useState<AIModel[]>([])
-  const [promptValue, setPromptValue] = useState('')
+  const [smartSuggestion, setSmartSuggestion] = useState<SmartSuggestion | null>(null)
+  const [undoStack, setUndoStack] = useState<{ text: string; context: DiffContext }[]>([])
   
-  const { history, addEntry, updateEntry } = useAIHistory()
+  const { history, addEntry } = useAIHistory()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -83,15 +77,32 @@ const HighlightSidebar = ({
     loadModels()
   }, [])
 
-  const handleOptionSelect = async (option: 'verify' | 'expand') => {
+  // Generate smart suggestions when highlight changes
+  useEffect(() => {
+    if (currentHighlight && selectedModel) {
+      setSmartSuggestion({ recommendation: { suggested: 'expand', confidence: 0, reason: '', alternatives: [] }, processing: true })
+      
+      smartSuggestionsService.analyzeText(currentHighlight.text, selectedModel)
+        .then(recommendation => {
+          setSmartSuggestion({
+            recommendation,
+            processing: false
+          })
+        })
+        .catch(() => {
+          setSmartSuggestion(null)
+        })
+    } else {
+      setSmartSuggestion(null)
+    }
+  }, [currentHighlight, selectedModel])
+
+  const handleActionSelect = async (action: ActionType, options?: ActionOptions) => {
     if (!currentHighlight || !selectedModel) return
     
     setIsLoading(true)
-    setCurrentOperation(option)
     
-    const prompt = option === 'verify' 
-      ? 'Verify this text and add a brief verification note if accurate'
-      : 'Expand this text with more detail and context'
+    const prompt = generatePrompt(action, options)
     
     try {
       const response = await aiService.sendToAI(
@@ -118,6 +129,14 @@ const HighlightSidebar = ({
         })
       }
       
+      const context: DiffContext = {
+        action,
+        options: options || {},
+        timestamp: new Date(),
+        model: selectedModel,
+        canUndo: undoStack.length > 0
+      }
+      
       const historyEntry: AIHistoryEntry = {
         id: crypto.randomUUID(),
         highlightId: currentHighlight.id,
@@ -131,7 +150,18 @@ const HighlightSidebar = ({
       
       addEntry(historyEntry)
       setSuggestedText(response.suggestedText)
-      setMode('diff')
+      setCurrentContext(context)
+      
+      // Use in-editor diff if callback provided, otherwise fallback to sidebar
+      if (onDiffRequest) {
+        onDiffRequest({
+          original: currentHighlight.text,
+          suggested: response.suggestedText,
+          context
+        })
+      } else {
+        setMode('diff')
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -143,81 +173,73 @@ const HighlightSidebar = ({
     }
   }
 
-  const handleFreeformSubmit = async () => {
-    if (!promptValue.trim() || !currentHighlight || !selectedModel) return
-    
-    setIsLoading(true)
-    setCurrentOperation('custom')
-    
-    try {
-      const response = await aiService.sendToAI(
-        currentHighlight.text,
-        promptValue,
-        selectedModel
-      )
-      
-      if (response.error) {
-        toast({
-          title: 'Error',
-          description: response.error,
-          variant: 'destructive',
-        })
-        setIsLoading(false)
-        return
-      }
-      
-      // Show fallback notification if a different model was used
-      if (response.fallbackUsed && response.actualModel) {
-        toast({
-          title: 'Model Switched',
-          description: `Used ${response.actualModel.name} instead of ${selectedModel.name}`,
-        })
-      }
-      
-      const historyEntry: AIHistoryEntry = {
-        id: crypto.randomUUID(),
-        highlightId: currentHighlight.id,
-        text: currentHighlight.text,
-        prompt: promptValue,
-        model: selectedModel,
-        timestamp: new Date(),
-        response,
-        applied: false,
-      }
-      
-      addEntry(historyEntry)
-      setSuggestedText(response.suggestedText)
-      setMode('diff')
-      setPromptValue('')
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to process AI request',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsLoading(false)
+  const generatePrompt = (action: ActionType, options?: ActionOptions): string => {
+    switch (action) {
+      case 'verify':
+        return 'Verify this text for accuracy and add a brief verification note if accurate, or point out any concerns if inaccurate.'
+      case 'expand':
+        return 'Expand this text with more detail, context, and supporting information while maintaining the original meaning.'
+      case 'reword':
+        if (options?.customPrompt) {
+          return options.customPrompt
+        }
+        if (options?.rewordType === 'concise') {
+          return 'Make this text more concise by removing unnecessary words while preserving all key information.'
+        }
+        if (options?.rewordType === 'flesh_out') {
+          return 'Flesh out this text with more detailed explanations, examples, and supporting context.'
+        }
+        if (options?.rewordType === 'tone' && options?.tone) {
+          return `Rewrite this text in a ${options.tone} tone while maintaining the same information and key points.`
+        }
+        if (options?.rewordType === 'simplify') {
+          return 'Simplify this text using clearer, more accessible language while maintaining the original meaning.'
+        }
+        if (options?.rewordType === 'engaging') {
+          return 'Rewrite this text to be more engaging and compelling while keeping the same information.'
+        }
+        if (options?.rewordType === 'audience' && options?.audience) {
+          return `Adjust this text for a ${options.audience} audience, using appropriate language and level of detail.`
+        }
+        return 'Rewrite this text to improve clarity, flow, and readability.'
+      default:
+        return 'Improve this text as appropriate.'
     }
   }
 
   const handleAcceptChanges = () => {
-    if (currentHighlight && suggestedText) {
-      onTextUpdate(currentHighlight.id, suggestedText)
-      setMode('options')
+    if (currentHighlight && suggestedText && currentContext) {
+      // Add current state to undo stack
+      setUndoStack(prev => [...prev, { text: currentHighlight.text, context: currentContext }])
+      
+      onTextUpdate(currentHighlight.id, suggestedText, currentContext)
+      setMode('actions')
       setSuggestedText('')
-      setCurrentOperation('')
+      setCurrentContext(null)
     }
   }
 
   const handleRejectChanges = () => {
-    setMode('options')
+    setMode('actions')
     setSuggestedText('')
-    setCurrentOperation('')
+    setCurrentContext(null)
+  }
+  
+  const handleUndo = () => {
+    if (undoStack.length > 0 && currentHighlight) {
+      const lastState = undoStack[undoStack.length - 1]
+      setUndoStack(prev => prev.slice(0, -1))
+      onTextUpdate(currentHighlight.id, lastState.text, lastState.context)
+      
+      toast({
+        title: 'Change Undone',
+        description: 'Previous text state has been restored',
+      })
+    }
   }
 
-  const resetToOptions = () => {
-    setMode('options')
-    setInputValue('')
+  const resetToActions = () => {
+    setMode('actions')
   }
 
   const formatTime = (date: Date) => {
@@ -305,117 +327,53 @@ const HighlightSidebar = ({
               <ScrollArea className="h-full p-4">
             {currentHighlight && (
               <div className="space-y-4">
-                {/* Mode: Options */}
-                {mode === 'options' && (
-                  <div className="space-y-4">
-                    <div className="text-center text-muted-foreground py-4">
-                      <Sparkles className="mx-auto mb-3 opacity-50" size={32} />
-                      <p className="text-sm font-medium mb-1">How would you like to refine this text?</p>
-                      <p className="text-xs">Choose an option below or create a custom request.</p>
-                    </div>
-
-                    {/* Default Options */}
-                    <div className="grid gap-3">
-                      <Button
-                        onClick={() => handleOptionSelect('verify')}
-                        variant="outline"
-                        className="flex items-center gap-3 p-4 h-auto text-left justify-start"
-                        disabled={isLoading}
-                      >
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <CheckCircle size={20} className="text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium">Verify</div>
-                          <div className="text-xs text-muted-foreground">Check accuracy and add verification notes</div>
-                        </div>
-                      </Button>
-
-                      <Button
-                        onClick={() => handleOptionSelect('expand')}
-                        variant="outline"
-                        className="flex items-center gap-3 p-4 h-auto text-left justify-start"
-                        disabled={isLoading}
-                      >
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <PlusCircle size={20} className="text-green-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium">Expand</div>
-                          <div className="text-xs text-muted-foreground">Add more detail and context</div>
-                        </div>
-                      </Button>
-                    </div>
-
-                    <Separator className="my-4" />
-
-                    {/* Custom Request */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium">Custom Request</h4>
-                      <Textarea
-                        value={promptValue}
-                        onChange={(e) => setPromptValue(e.target.value)}
-                        placeholder="Describe how you'd like to modify this text..."
-                        className="min-h-[80px] bg-background"
-                        disabled={isLoading}
-                        maxLength={500}
-                      />
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{promptValue.length}/500 characters</span>
-                        {!selectedModel && (
-                          <span className="text-destructive flex items-center gap-1">
-                            <AlertCircle size={12} />
-                            No model selected
-                          </span>
-                        )}
-                      </div>
-                      <Button
-                        onClick={handleFreeformSubmit}
-                        disabled={!promptValue.trim() || isLoading || !selectedModel}
-                        className="w-full"
-                      >
-                        <Send size={16} className="mr-2" />
-                        Generate Changes
-                      </Button>
-                    </div>
-                  </div>
+                {/* Mode: Actions */}
+                {mode === 'actions' && (
+                  <ActionPanel
+                    onActionSelect={handleActionSelect}
+                    isLoading={isLoading}
+                    smartSuggestion={smartSuggestion || undefined}
+                    hasModel={!!selectedModel}
+                  />
                 )}
 
-                {/* Mode: Diff View */}
-                {mode === 'diff' && suggestedText && (
+                {/* Mode: Diff View (Fallback for sidebar display) */}
+                {mode === 'diff' && suggestedText && currentContext && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium">Review Changes</h4>
                       <Button
-                        onClick={resetToOptions}
+                        onClick={resetToActions}
                         variant="outline"
                         size="sm"
                       >
-                        Back to Options
+                        Back to Actions
                       </Button>
                     </div>
                     
-                    <DiffView
+                    <InEditorDiff
                       originalText={currentHighlight.text}
                       suggestedText={suggestedText}
                       onAccept={handleAcceptChanges}
                       onReject={handleRejectChanges}
-                      operation={currentOperation}
+                      onUndo={currentContext.canUndo ? handleUndo : undefined}
+                      context={currentContext}
                     />
                   </div>
                 )}
 
-                {/* Loading State */}
-                {isLoading && (
-                  <div className="text-center py-8">
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
-                      </div>
-                      Processing your request...
-                    </div>
+                {/* Undo Button */}
+                {undoStack.length > 0 && mode === 'actions' && (
+                  <div className="pt-2 border-t border-border">
+                    <Button
+                      onClick={handleUndo}
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 text-muted-foreground"
+                    >
+                      <History size={14} />
+                      Undo Last Change
+                    </Button>
                   </div>
                 )}
               </div>
@@ -438,11 +396,8 @@ const HighlightSidebar = ({
                         className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                         onClick={() => {
                           if (currentHighlight?.id === entry.highlightId) {
-                            setPromptValue(entry.prompt)
-                            toast({
-                              title: 'Prompt loaded',
-                              description: 'Previous prompt has been loaded',
-                            })
+                            // Reapply this historical entry
+                            handleActionSelect('reword', { customPrompt: entry.prompt })
                           }
                         }}
                       >

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import TextEditor from '@/components/TextEditor'
-import HighlightSidebar from '@/components/HighlightSidebar'
+import TextEditor from '@/components/Editor/TextEditor'
+import HighlightSidebar from '@/components/Sidebar/HighlightSidebar'
 import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DiffContext } from '@/types/ai-models'
 
 interface Highlight {
   id: string
@@ -21,7 +22,7 @@ const Index = () => {
       if (saved) {
         const parsed = JSON.parse(saved)
         // Convert timestamp strings back to Date objects
-        return parsed.map((h: any) => ({
+        return parsed.map((h: Highlight & { timestamp: string }) => ({
           ...h,
           timestamp: new Date(h.timestamp)
         }))
@@ -44,6 +45,7 @@ const Index = () => {
   const [highlights, setHighlights] = useState<Highlight[]>(loadSavedHighlights)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentHighlight, setCurrentHighlight] = useState<Highlight | null>(null)
+  const [diffData, setDiffData] = useState<{ original: string; suggested: string; context: DiffContext } | null>(null)
 
   const handleHighlightCreate = (highlight: Highlight) => {
     const newHighlights = [...highlights, highlight]
@@ -61,12 +63,32 @@ const Index = () => {
     setSidebarOpen(true)
   }
 
-  const handleTextUpdate = (highlightId: string, newText: string) => {
+  const handleTextUpdate = (highlightId: string, newText: string, context?: DiffContext) => {
     const updatedHighlights = highlights.map(h => 
       h.id === highlightId ? { ...h, text: newText } : h
     )
     setHighlights(updatedHighlights)
     saveHighlights(updatedHighlights)
+  }
+  
+  const handleDiffRequest = (data: { original: string; suggested: string; context: DiffContext }) => {
+    setDiffData(data)
+  }
+  
+  const handleDiffAccept = () => {
+    if (diffData && currentHighlight) {
+      handleTextUpdate(currentHighlight.id, diffData.suggested, diffData.context)
+    }
+    setDiffData(null)
+  }
+  
+  const handleDiffReject = () => {
+    setDiffData(null)
+  }
+  
+  const handleDiffUndo = () => {
+    // This will be handled by the sidebar's undo functionality
+    setDiffData(null)
   }
 
   return (
@@ -95,6 +117,10 @@ const Index = () => {
               onHighlightCreate={handleHighlightCreate}
               activeHighlight={currentHighlight?.id}
               onOpenSidebar={handleOpenSidebar}
+              diffData={diffData}
+              onDiffAccept={handleDiffAccept}
+              onDiffReject={handleDiffReject}
+              onDiffUndo={handleDiffUndo}
             />
           </div>
         </main>
@@ -110,6 +136,7 @@ const Index = () => {
             highlights={highlights}
             onSelectHighlight={handleSelectHighlight}
             onTextUpdate={handleTextUpdate}
+            onDiffRequest={handleDiffRequest}
           />
         </div>
       )}
