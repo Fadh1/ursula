@@ -7,12 +7,10 @@ import {
 import { aiService } from './ai-service'
 import { 
   calculateJaccardSimilarity, 
-  createTextHash, 
-  isSignificantChange 
+  createTextHash
 } from '@/lib/jaccard-similarity'
 import { initializeNanoContextWithChecks } from '@/lib/browser-compatibility'
 import { performanceMonitor, PerformanceConfig, timeOperation } from '@/lib/performance-monitor'
-import { compressContext, decompressContext, calculateCompressionRatio } from '@/lib/context-compression'
 
 /**
  * NanoContextService - Core service for intelligent contextual awareness
@@ -306,7 +304,7 @@ export class NanoContextService {
 
       // Create complete TextContext object
       const context: TextContext = {
-        id: `ctx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `ctx-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         textHash,
         description: parsedContext.description,
         tone: parsedContext.tone,
@@ -376,7 +374,7 @@ Respond with only the JSON object, no additional text.`
   /**
    * Parse AI response to extract structured context information
    */
-  private parseContextResponse(response: string, model: AIModel): {
+  private parseContextResponse(response: string, _model: AIModel): {
     description: string
     tone: string
     intent: string
@@ -403,7 +401,7 @@ Respond with only the JSON object, no additional text.`
         tone: String(parsed.tone).trim(),
         intent: String(parsed.intent).trim(),
         keyArguments: Array.isArray(parsed.keyArguments) 
-          ? parsed.keyArguments.map(String).filter(arg => arg.trim())
+          ? parsed.keyArguments.map((arg: any) => String(arg)).filter((arg: string) => arg.trim())
           : [],
         confidence: typeof parsed.confidence === 'number' 
           ? Math.max(0, Math.min(1, parsed.confidence))
@@ -601,7 +599,7 @@ Respond with only the JSON object, no additional text.`
       
       // Create context with original text hash and length
       const context: TextContext = {
-        id: `ctx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `ctx-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         textHash: originalTextHash,
         description: parsedContext.description + ' (generated from truncated large text)',
         tone: parsedContext.tone,

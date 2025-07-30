@@ -170,6 +170,8 @@ export interface NanoContextConfig {
   enabled: boolean
   /** Whether to generate context automatically on text changes */
   autoGenerate: boolean
+  /** Minimum text length to process (default: 50 characters) */
+  minTextLength: number
   /** Maximum text length to process (default: 10000 characters) */
   maxTextLength: number
   /** Debounce delay for context updates in milliseconds (default: 2000) */
@@ -187,6 +189,7 @@ export const DEFAULT_NANO_CONTEXT_CONFIG: NanoContextConfig = {
   },
   enabled: true,
   autoGenerate: true,
+  minTextLength: 50,
   maxTextLength: 10000,
   debounceMs: 2000,
 }

@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import InEditorDiff from '../Editor/InEditorDiff'
 import ActionPanel from './ActionPanel'
 import { ModelSelector } from './ModelSelector'
+import ContextViewer from './ContextViewer'
 import { AIModel, AIHistoryEntry, ActionType, ActionOptions, SmartSuggestion, DiffContext, TextContext } from '@/types/ai-models'
 import { aiService } from '@/services/ai-service'
 import { smartSuggestionsService } from '@/services/smart-suggestions'
@@ -22,6 +23,7 @@ import { useAIHistory } from '@/hooks/use-ai-history'
 import { useToast } from '@/hooks/use-toast'
 import { nanoContextService } from '@/services/nano-context-service'
 import { createTextHash } from '@/lib/jaccard-similarity'
+import { useNanoContext } from '@/hooks/use-nano-context'
 import { 
   generateContextAwareActionPrompt, 
   enhanceCustomPrompt,
@@ -74,6 +76,7 @@ const HighlightSidebar = ({
   
   const { history, addEntry } = useAIHistory()
   const { toast } = useToast()
+  const { updateContext } = useNanoContext()
 
   useEffect(() => {
     const loadModels = async () => {
@@ -140,6 +143,28 @@ const HighlightSidebar = ({
       setTextContext(null)
     }
   }, [currentHighlight, selectedModel])
+
+  // Handle context updates from the context viewer
+  const handleContextUpdate = (updatedContext: Partial<TextContext>) => {
+    if (!textContext || !currentHighlight) return
+
+    const fullUpdatedContext: TextContext = {
+      ...textContext,
+      ...updatedContext,
+      lastUsed: new Date() // Update usage timestamp
+    }
+
+    // Update local state
+    setTextContext(fullUpdatedContext)
+
+    // Update in storage
+    updateContext(textContext.textHash, updatedContext)
+
+    toast({
+      title: 'Context Updated',
+      description: 'Text context has been saved successfully',
+    })
+  }
 
   const handleActionSelect = async (action: ActionType, options?: ActionOptions) => {
     if (!currentHighlight || !selectedModel) return
@@ -323,16 +348,13 @@ const HighlightSidebar = ({
               {currentHighlight.text}
             </div>
             
-            {/* Context Indicator */}
-            {textContext && isContextSuitableForPrompts(textContext) && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Context available: {textContext.tone} tone, {textContext.intent}</span>
-                <Badge variant="outline" className="text-xs">
-                  {Math.round(textContext.confidence * 100)}% confidence
-                </Badge>
-              </div>
-            )}
+            {/* Context Viewer */}
+            <div className="mt-2">
+              <ContextViewer 
+                context={textContext && isContextSuitableForPrompts(textContext) ? textContext : null}
+                onContextUpdate={handleContextUpdate}
+              />
+            </div>
           </div>
         )}
 
