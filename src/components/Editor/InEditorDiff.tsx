@@ -140,15 +140,8 @@ const InEditorDiff = ({
               <div className="text-xs text-red-600 font-medium mb-2 flex items-center gap-1">
                 <span>−</span> Original
               </div>
-              <div className="text-sm">
-                {removed.map((word, index) => (
-                  <span 
-                    key={`removed-${index}`} 
-                    className="bg-red-100 text-red-800 px-0.5 rounded mr-1 leading-relaxed"
-                  >
-                    {word}
-                  </span>
-                ))}
+              <div className="text-sm whitespace-pre-wrap break-words text-red-800">
+                {originalText}
               </div>
             </div>
 
@@ -157,15 +150,8 @@ const InEditorDiff = ({
               <div className="text-xs text-green-600 font-medium mb-2 flex items-center gap-1">
                 <span>+</span> Suggested
               </div>
-              <div className="text-sm">
-                {added.map((word, index) => (
-                  <span 
-                    key={`added-${index}`} 
-                    className="bg-green-100 text-green-800 px-0.5 rounded mr-1 leading-relaxed"
-                  >
-                    {word}
-                  </span>
-                ))}
+              <div className="text-sm whitespace-pre-wrap break-words text-green-800">
+                {suggestedText}
               </div>
             </div>
           </div>
