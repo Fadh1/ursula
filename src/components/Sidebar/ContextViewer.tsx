@@ -96,11 +96,6 @@ export const ContextViewer = ({
     })
   }
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600 bg-green-50 border-green-200'
-    if (confidence >= 0.6) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-    return 'text-red-600 bg-red-50 border-red-200'
-  }
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -108,9 +103,6 @@ export const ContextViewer = ({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
         <span>Context available: {context.tone} tone, {context.intent}</span>
-        <Badge variant="outline" className="text-xs">
-          {Math.round(context.confidence * 100)}% confidence
-        </Badge>
         <Button
           variant="ghost"
           size="sm"
@@ -290,25 +282,17 @@ export const ContextViewer = ({
 
             {/* Metadata */}
             <div className="pt-2 border-t border-border/50">
-              <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
+              <div className="text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 mb-2">
                   <Clock size={12} />
                   <span>Generated: {formatTimestamp(context.timestamp)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge 
-                    variant="outline" 
-                    className={cn("text-xs", getConfidenceColor(context.confidence))}
-                  >
-                    {Math.round(context.confidence * 100)}% confidence
-                  </Badge>
+                <div>
+                  Text length: {context.textLength.toLocaleString()} characters
+                  {context.usageCount > 0 && (
+                    <span className="ml-3">Used {context.usageCount} times</span>
+                  )}
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                Text length: {context.textLength.toLocaleString()} characters
-                {context.usageCount > 0 && (
-                  <span className="ml-3">Used {context.usageCount} times</span>
-                )}
               </div>
             </div>
           </div>

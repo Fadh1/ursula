@@ -314,29 +314,19 @@ export class NanoContextService {
         timestamp: new Date(),
         lastUsed: new Date(),
         usageCount: 0,
-        confidence: parsedContext.confidence,
         textLength: text.length
       }
 
       console.log(`Context generated successfully: ${context.description.substring(0, 50)}...`)
       
-      stopTiming({
-        textLength: text.length,
-        modelName: model.name,
-        success: true
-      })
+      stopTiming()
       
       return context
 
     } catch (error) {
       console.error('Context generation failed:', error)
       
-      stopTiming({
-        textLength: text.length,
-        modelName: model.name,
-        success: false,
-        error: error.message
-      })
+      stopTiming()
       
       return null
     }
@@ -359,8 +349,7 @@ Provide your analysis in the following JSON format:
   "description": "A comprehensive 80-120 word description that captures the essence, tone, and key points of the text for use in future refinement contexts",
   "tone": "primary tone (formal/casual/technical/creative/persuasive/etc.)",
   "intent": "main purpose or goal of the text",
-  "keyArguments": ["list", "of", "main", "points", "or", "arguments"],
-  "confidence": 0.85
+  "keyArguments": ["list", "of", "main", "points", "or", "arguments"]
 }
 
 Text to analyze:
@@ -379,7 +368,6 @@ Respond with only the JSON object, no additional text.`
     tone: string
     intent: string
     keyArguments: string[]
-    confidence: number
   } | null {
     try {
       // Clean up response - remove markdown code blocks if present
@@ -402,10 +390,7 @@ Respond with only the JSON object, no additional text.`
         intent: String(parsed.intent).trim(),
         keyArguments: Array.isArray(parsed.keyArguments) 
           ? parsed.keyArguments.map((arg: any) => String(arg)).filter((arg: string) => arg.trim())
-          : [],
-        confidence: typeof parsed.confidence === 'number' 
-          ? Math.max(0, Math.min(1, parsed.confidence))
-          : 0.7 // Default confidence
+          : []
       }
 
     } catch (error) {
@@ -424,7 +409,6 @@ Respond with only the JSON object, no additional text.`
     tone: string
     intent: string
     keyArguments: string[]
-    confidence: number
   } | null {
     if (!response || response.length < 20) {
       return null
@@ -443,8 +427,7 @@ Respond with only the JSON object, no additional text.`
       description,
       tone,
       intent: 'general purpose text',
-      keyArguments: [],
-      confidence: 0.5 // Lower confidence for fallback parsing
+      keyArguments: []
     }
   }
 
@@ -609,32 +592,18 @@ Respond with only the JSON object, no additional text.`
         timestamp: new Date(),
         lastUsed: new Date(),
         usageCount: 0,
-        confidence: Math.max(0.3, parsedContext.confidence - 0.2), // Slightly lower confidence for truncated text
         textLength: originalTextLength // Use original length
       }
       
       console.log(`Context generated successfully for large text: ${context.description.substring(0, 50)}...`)
       
-      stopTiming({
-        originalTextLength,
-        truncatedTextLength: truncatedText.length,
-        modelName: model.name,
-        success: true,
-        truncated: true
-      })
+      stopTiming()
       
       return context
     } catch (error) {
       console.error('Direct context generation failed:', error)
       
-      stopTiming({
-        originalTextLength,
-        truncatedTextLength: truncatedText.length,
-        modelName: model.name,
-        success: false,
-        error: error.message,
-        truncated: true
-      })
+      stopTiming()
       
       return null
     }

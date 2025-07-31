@@ -276,9 +276,6 @@ export function createContextSummary(context: TextContext | null, maxLength: num
 export function isContextSuitableForPrompts(context: TextContext | null): boolean {
   if (!context) return false
 
-  // Check confidence threshold
-  if (context.confidence < 0.6) return false
-
   // Check for meaningful content
   if (!context.description || context.description.length < 20) return false
 
