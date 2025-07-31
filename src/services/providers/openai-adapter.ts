@@ -58,7 +58,7 @@ export class OpenAIAdapter implements AIProviderAdapter {
       capabilities: ['Text generation', 'Code writing', 'Analysis', 'Creative writing'],
       maxTokens: 128000,
       costPerToken: 0.00001,
-      isDefault: true,
+      isDefault: false,
     }
   }
 }
