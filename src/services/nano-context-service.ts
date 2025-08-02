@@ -11,6 +11,11 @@ import {
 } from '@/lib/jaccard-similarity'
 import { initializeNanoContextWithChecks } from '@/lib/browser-compatibility'
 import { performanceMonitor, PerformanceConfig, timeOperation } from '@/lib/performance-monitor'
+import { 
+  NANO_CONTEXT_STORAGE_KEY, 
+  ContextStorage 
+} from '@/types/ai-models'
+import { decompressContextBatch } from '@/lib/context-compression'
 
 /**
  * NanoContextService - Core service for intelligent contextual awareness
@@ -21,9 +26,7 @@ import { performanceMonitor, PerformanceConfig, timeOperation } from '@/lib/perf
  */
 export class NanoContextService {
   private static instance: NanoContextService
-  private contextCache = new Map<string, TextContext>()
   private generationQueue = new Map<string, Promise<TextContext | null>>()
-  private readonly CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
   private config: NanoContextConfig = DEFAULT_NANO_CONTEXT_CONFIG
   private isInitialized = false
   private compatibilityChecked = false
@@ -122,13 +125,18 @@ export class NanoContextService {
     const textHash = createTextHash(text)
     const cacheKey = `${textHash}-${model.id}`
 
-    // Check cache first
-    const cached = this.contextCache.get(cacheKey)
-    if (cached && this.isCacheValid(cached)) {
-      // Update usage tracking
-      cached.lastUsed = new Date()
-      cached.usageCount++
-      return { ...cached }
+    // Check localStorage for existing context
+    const storedContext = this.getContextFromLocalStorage(textHash)
+    if (storedContext && this.isCacheValid(storedContext)) {
+      // Update usage tracking and save back to localStorage
+      storedContext.lastUsed = new Date()
+      storedContext.usageCount++
+      this.saveContextToLocalStorage(storedContext).catch(error => {
+        console.warn('NanoContextService: Failed to update context usage in localStorage:', error)
+      })
+      
+      console.debug(`NanoContextService: Using stored context for hash ${textHash.substring(0, 8)}...`)
+      return { ...storedContext }
     }
 
     // Check if generation is already in progress
@@ -144,16 +152,12 @@ export class NanoContextService {
     try {
       const result = await generationPromise
       
-      // Cache successful results
+      // Save successful results to localStorage
       if (result) {
-        this.contextCache.set(cacheKey, result)
-        console.debug(`NanoContextService: Cached context for text hash ${textHash.substring(0, 8)}...`)
-        
-        // Clean up cache after expiry
-        setTimeout(() => {
-          this.contextCache.delete(cacheKey)
-          console.debug(`NanoContextService: Expired cache for text hash ${textHash.substring(0, 8)}...`)
-        }, this.CACHE_EXPIRY)
+        this.saveContextToLocalStorage(result).catch(error => {
+          console.warn('NanoContextService: Failed to save context to localStorage:', error)
+        })
+        console.debug(`NanoContextService: Saved context for text hash ${textHash.substring(0, 8)}...`)
       }
 
       return result
@@ -230,45 +234,93 @@ export class NanoContextService {
   }
 
   /**
-   * Get context for text by hash (from cache only)
+   * Get context for text by hash (from cache and localStorage)
    * 
    * @param textHash - Hash of the text
    * @returns Cached context or null
    */
   getContextForText(textHash: string): TextContext | null {
-    // Look for any cached context with this text hash
-    for (const [cacheKey, context] of this.contextCache.entries()) {
-      if (cacheKey.startsWith(textHash) && this.isCacheValid(context)) {
-        // Update usage tracking
-        context.lastUsed = new Date()
-        context.usageCount++
-        return { ...context }
-      }
+    // Check localStorage for the context
+    const storedContext = this.getContextFromLocalStorage(textHash)
+    if (storedContext && this.isCacheValid(storedContext)) {
+      // Update usage tracking and save back to localStorage
+      storedContext.lastUsed = new Date()
+      storedContext.usageCount++
+      this.saveContextToLocalStorage(storedContext).catch(error => {
+        console.warn('NanoContextService: Failed to update context usage in localStorage:', error)
+      })
+      
+      console.debug(`NanoContextService: Retrieved context from localStorage for hash ${textHash.substring(0, 8)}...`)
+      return { ...storedContext }
     }
 
     return null
   }
 
   /**
-   * Clear all cached contexts
+   * Clear all cached contexts from localStorage
    */
   clearCache(): void {
-    this.contextCache.clear()
+    localStorage.removeItem(NANO_CONTEXT_STORAGE_KEY)
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics from localStorage
    */
   getCacheStats() {
-    const total = this.contextCache.size
-    const valid = Array.from(this.contextCache.values()).filter(c => this.isCacheValid(c)).length
-    const expired = total - valid
+    try {
+      const storedData = localStorage.getItem(NANO_CONTEXT_STORAGE_KEY)
+      if (!storedData) {
+        return {
+          total: 0,
+          valid: 0,
+          expired: 0,
+          generationInProgress: this.generationQueue.size
+        }
+      }
 
-    return {
-      total,
-      valid,
-      expired,
-      generationInProgress: this.generationQueue.size
+      const parsedStorage: ContextStorage = JSON.parse(storedData)
+      const contexts = parsedStorage.contexts || {}
+      const total = Object.keys(contexts).length
+      
+      // Count valid contexts by checking their age
+      let valid = 0
+      let expired = 0
+      
+      Object.values(contexts).forEach((context: any) => {
+        try {
+          // Handle both compressed and uncompressed formats
+          const contextObj: TextContext = {
+            ...context,
+            timestamp: new Date(context.timestamp),
+            lastUsed: new Date(context.lastUsed)
+          }
+          
+          if (this.isCacheValid(contextObj)) {
+            valid++
+          } else {
+            expired++
+          }
+        } catch (error) {
+          // Count invalid contexts as expired
+          expired++
+        }
+      })
+
+      return {
+        total,
+        valid,
+        expired,
+        generationInProgress: this.generationQueue.size
+      }
+    } catch (error) {
+      console.warn('NanoContextService: Error getting cache stats:', error)
+      return {
+        total: 0,
+        valid: 0,
+        expired: 0,
+        generationInProgress: this.generationQueue.size
+      }
     }
   }
 
@@ -432,12 +484,12 @@ Respond with only the JSON object, no additional text.`
   }
 
   /**
-   * Check if cached context is still valid
+   * Check if cached context is still valid (based on config expiry)
    */
   private isCacheValid(context: TextContext): boolean {
     const now = new Date()
     const age = now.getTime() - context.timestamp.getTime()
-    return age < this.CACHE_EXPIRY
+    return age < this.config.thresholds.contextExpiryMs
   }
 
   /**
@@ -513,12 +565,18 @@ Respond with only the JSON object, no additional text.`
       const originalTextHash = createTextHash(text)
       const cacheKey = `${originalTextHash}-${model.id}`
       
-      // Check cache first
-      const cached = this.contextCache.get(cacheKey)
-      if (cached && this.isCacheValid(cached)) {
-        cached.lastUsed = new Date()
-        cached.usageCount++
-        return { ...cached }
+      // Check localStorage for existing context
+      const storedContext = this.getContextFromLocalStorage(originalTextHash)
+      if (storedContext && this.isCacheValid(storedContext)) {
+        // Update usage tracking and save back to localStorage
+        storedContext.lastUsed = new Date()
+        storedContext.usageCount++
+        this.saveContextToLocalStorage(storedContext).catch(error => {
+          console.warn('NanoContextService: Failed to update large text context usage in localStorage:', error)
+        })
+        
+        console.debug(`NanoContextService: Using stored context for large text hash ${originalTextHash.substring(0, 8)}...`)
+        return { ...storedContext }
       }
       
       // Check if generation is already in progress
@@ -535,10 +593,10 @@ Respond with only the JSON object, no additional text.`
         const result = await generationPromise
         
         if (result) {
-          this.contextCache.set(cacheKey, result)
-          setTimeout(() => {
-            this.contextCache.delete(cacheKey)
-          }, this.CACHE_EXPIRY)
+          // Save to localStorage for persistence
+          this.saveContextToLocalStorage(result).catch(error => {
+            console.warn('NanoContextService: Failed to save large text context to localStorage:', error)
+          })
         }
         
         return result
@@ -633,6 +691,106 @@ Respond with only the JSON object, no additional text.`
     const endPart = text.substring(text.length - endLength)
     
     return startPart + truncationMessage + endPart
+  }
+
+  /**
+   * Get context from localStorage by text hash
+   * 
+   * @param textHash - Hash of the text to find context for
+   * @returns Context from localStorage or null
+   */
+  private getContextFromLocalStorage(textHash: string): TextContext | null {
+    try {
+      const storedData = localStorage.getItem(NANO_CONTEXT_STORAGE_KEY)
+      if (!storedData) return null
+
+      const parsedStorage: ContextStorage = JSON.parse(storedData)
+      if (!parsedStorage.contexts) return null
+
+      // Check if the storage format is compressed
+      const isCompressed = parsedStorage.metadata?.compressed === true
+      
+      if (isCompressed) {
+        // Handle compressed format
+        const compressedContext = parsedStorage.contexts[textHash]
+        if (compressedContext) {
+          // Create text hash mapping for decompression
+          const textHashMapping = { [textHash]: textHash }
+          const decompressed = decompressContextBatch(
+            { [textHash]: compressedContext } as any, 
+            textHashMapping
+          )
+          
+          const context = decompressed[textHash]
+          if (context) {
+            // Reconstruct Date objects and validate
+            const result: TextContext = {
+              ...context,
+              timestamp: new Date(context.timestamp),
+              lastUsed: new Date(context.lastUsed)
+            }
+            return result
+          }
+        }
+      } else {
+        // Handle uncompressed format
+        const context = parsedStorage.contexts[textHash]
+        if (context) {
+          // Reconstruct Date objects and validate
+          const result: TextContext = {
+            ...context,
+            timestamp: new Date(context.timestamp),
+            lastUsed: new Date(context.lastUsed)
+          }
+          return result
+        }
+      }
+    } catch (error) {
+      console.warn('NanoContextService: Error reading context from localStorage:', error)
+    }
+    
+    return null
+  }
+
+  /**
+   * Save context to localStorage (fire-and-forget approach)
+   * This is a backup mechanism in case the useNanoContext hook isn't being used
+   * 
+   * @param context - Context to save
+   */
+  private async saveContextToLocalStorage(context: TextContext): Promise<void> {
+    try {
+      // This is a simple fire-and-forget save that won't interfere with the main hook
+      // It just ensures contexts generated by the service are persisted
+      const existingData = localStorage.getItem(NANO_CONTEXT_STORAGE_KEY)
+      let storage: ContextStorage
+      
+      if (existingData) {
+        storage = JSON.parse(existingData)
+      } else {
+        storage = {
+          contexts: {},
+          metadata: {
+            lastCleanup: new Date(),
+            totalContexts: 0,
+            storageVersion: '1.0.0',
+            estimatedSize: 0,
+            compressed: false
+          }
+        }
+      }
+      
+      // Add the new context (uncompressed for simplicity)
+      storage.contexts[context.textHash] = context
+      storage.metadata.totalContexts = Object.keys(storage.contexts).length
+      storage.metadata.estimatedSize = JSON.stringify(storage.contexts).length
+      
+      localStorage.setItem(NANO_CONTEXT_STORAGE_KEY, JSON.stringify(storage))
+      console.debug(`NanoContextService: Saved context to localStorage for hash ${context.textHash.substring(0, 8)}...`)
+    } catch (error) {
+      // Don't throw - this is a backup mechanism
+      console.debug('NanoContextService: Could not save to localStorage (likely quota exceeded):', error)
+    }
   }
 }
 
