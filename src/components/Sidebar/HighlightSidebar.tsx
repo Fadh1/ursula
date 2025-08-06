@@ -3,7 +3,6 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   X, 
   Sparkles, 
@@ -332,23 +331,8 @@ const HighlightSidebar = ({
 
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
-          <Tabs defaultValue="chat" className="flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="chat">Chat</TabsTrigger>
-              <TabsTrigger value="history" className="flex items-center gap-2">
-                <History size={14} />
-                History
-                {history.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1 text-xs">
-                    {history.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="chat" className="flex-1 overflow-hidden">
-              <ScrollArea className="h-full p-4">
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full p-4">
             {currentHighlight && (
               <div className="space-y-4">
                 {/* Mode: Actions */}
@@ -395,68 +379,13 @@ const HighlightSidebar = ({
                       size="sm"
                       className="w-full gap-2 text-muted-foreground"
                     >
-                      <History size={14} />
                       Undo Last Change
                     </Button>
                   </div>
                 )}
               </div>
             )}
-              </ScrollArea>
-            </TabsContent>
-            
-            <TabsContent value="history" className="flex-1 overflow-hidden">
-              <ScrollArea className="h-full p-4">
-                {history.length === 0 ? (
-                  <div className="text-center py-8">
-                    <History className="mx-auto mb-3 opacity-30" size={32} />
-                    <p className="text-sm text-muted-foreground">No AI requests yet</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {history.map((entry) => (
-                      <Card 
-                        key={entry.id} 
-                        className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => {
-                          if (currentHighlight?.id === entry.highlightId) {
-                            // Reapply this historical entry
-                            handleActionSelect('reword', { customPrompt: entry.prompt })
-                          }
-                        }}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="text-xs">
-                                {entry.model.name}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {formatTime(entry.timestamp)}
-                              </span>
-                              {entry.applied && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Applied
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-1">Prompt:</p>
-                            <p className="text-sm line-clamp-2">{entry.prompt}</p>
-                            {entry.response.error && (
-                              <p className="text-xs text-destructive mt-1 flex items-center gap-1">
-                                <AlertCircle size={12} />
-                                {entry.response.error}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+          </ScrollArea>
         </div>
       </div>
     </div>
