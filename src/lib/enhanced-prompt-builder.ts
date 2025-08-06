@@ -131,9 +131,6 @@ export function generateContextAwareActionPrompt(
 
   // Generate base prompt using existing patterns
   switch (action) {
-    case 'verify':
-      basePrompt = 'Verify this text for accuracy and add a brief verification note if accurate, or point out any concerns if inaccurate.'
-      break
     case 'expand':
       basePrompt = 'Expand this text with more detail, context, and supporting information while maintaining the original meaning.'
       break
@@ -181,13 +178,6 @@ export function getRelevantContextForAction(
   const relevant: Partial<TextContext> = {}
 
   switch (action) {
-    case 'verify':
-      // For verification, focus on technical content
-      if (context.tone.includes('technical') || context.tone.includes('academic')) {
-        relevant.tone = context.tone
-      }
-      break
-
     case 'expand':
       // For expansion, all context is potentially relevant
       relevant.description = context.description

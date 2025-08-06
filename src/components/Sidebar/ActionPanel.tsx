@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { 
-  CheckCircle, 
   PlusCircle, 
   Edit3, 
   Send, 
@@ -112,15 +111,6 @@ const ActionPanel = ({
 
       {/* Primary Actions */}
       <div className="grid gap-3">
-        {getActionButton(
-          'verify',
-          <CheckCircle size={20} />,
-          'Verify',
-          'Check accuracy and add verification notes',
-          'bg-blue-100',
-          'text-blue-600'
-        )}
-
         {getActionButton(
           'expand',
           <PlusCircle size={20} />,

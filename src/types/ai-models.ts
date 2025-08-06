@@ -62,7 +62,7 @@ export interface ModelHealth {
 }
 
 // Enhanced types for Sidebar Improvements
-export type ActionType = 'verify' | 'expand' | 'reword';
+export type ActionType = 'expand' | 'reword';
 
 export type RewordType = 'concise' | 'flesh_out' | 'tone' | 'simplify' | 'engaging' | 'audience';
 

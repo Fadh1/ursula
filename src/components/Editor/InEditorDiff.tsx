@@ -63,8 +63,6 @@ const InEditorDiff = ({
 
   const getActionLabel = () => {
     switch (context.action) {
-      case 'verify':
-        return 'Verification'
       case 'expand':
         return 'Expansion'
       case 'reword':
