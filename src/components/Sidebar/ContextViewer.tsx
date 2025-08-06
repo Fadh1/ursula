@@ -13,7 +13,6 @@ import {
   X,
   Info,
   Clock,
-  Hash,
   Target,
   Volume2,
   MessageSquare
@@ -46,8 +45,7 @@ export const ContextViewer = ({
     setEditedContext({
       description: context.description,
       tone: context.tone,
-      intent: context.intent,
-      keyArguments: [...context.keyArguments]
+      intent: context.intent
     })
     setIsEditing(true)
   }
@@ -65,25 +63,6 @@ export const ContextViewer = ({
     setEditedContext(null)
   }
 
-  const handleKeyArgumentChange = (index: number, value: string) => {
-    if (!editedContext) return
-    const newArgs = [...(editedContext.keyArguments || [])]
-    newArgs[index] = value
-    setEditedContext({ ...editedContext, keyArguments: newArgs })
-  }
-
-  const handleAddKeyArgument = () => {
-    if (!editedContext) return
-    const newArgs = [...(editedContext.keyArguments || []), '']
-    setEditedContext({ ...editedContext, keyArguments: newArgs })
-  }
-
-  const handleRemoveKeyArgument = (index: number) => {
-    if (!editedContext) return
-    const newArgs = [...(editedContext.keyArguments || [])]
-    newArgs.splice(index, 1)
-    setEditedContext({ ...editedContext, keyArguments: newArgs })
-  }
 
   const formatTimestamp = (date: Date) => {
     return date.toLocaleString([], { 
@@ -233,55 +212,6 @@ export const ContextViewer = ({
               </div>
             </div>
 
-            {/* Key Arguments */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Hash size={14} className="text-muted-foreground" />
-                <Label className="text-sm font-medium">Key Points</Label>
-              </div>
-              {isEditing ? (
-                <div className="space-y-2">
-                  {(editedContext?.keyArguments || []).map((arg, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        value={arg}
-                        onChange={(e) => handleKeyArgumentChange(index, e.target.value)}
-                        className="text-sm"
-                        placeholder={`Key point ${index + 1}`}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveKeyArgument(index)}
-                        className="h-9 w-9 p-0 text-red-500 hover:text-red-600"
-                      >
-                        <X size={14} />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddKeyArgument}
-                    className="w-full text-sm"
-                  >
-                    Add Key Point
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {context.keyArguments.length > 0 ? (
-                    context.keyArguments.map((arg, index) => (
-                      <div key={index} className="text-sm text-muted-foreground bg-background/50 px-3 py-2 rounded border">
-                        • {arg}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">No key points identified</p>
-                  )}
-                </div>
-              )}
-            </div>
 
             {/* Metadata */}
             <div className="pt-2 border-t border-border/50">

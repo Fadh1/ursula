@@ -116,8 +116,6 @@ export interface TextContext {
   tone: string
   /** Overall intent/purpose of the text */
   intent: string
-  /** Main arguments or key points made in the text */
-  keyArguments: string[]
   /** AI model used for context generation */
   model: AIModel
   /** When context was generated */

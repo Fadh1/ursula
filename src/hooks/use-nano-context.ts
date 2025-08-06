@@ -7,7 +7,6 @@ import {
   NANO_CONTEXT_STORAGE_KEY,
   NANO_CONTEXT_CONFIG_KEY
 } from '@/types/ai-models'
-import { compressContextBatch, decompressContextBatch } from '@/lib/context-compression'
 import { PerformanceConfig, timeOperation } from '@/lib/performance-monitor'
 
 const STORAGE_VERSION = '1.0.0'
@@ -46,47 +45,17 @@ export function useNanoContext() {
           
           // Validate storage version and structure
           if (parsedStorage.metadata?.storageVersion === STORAGE_VERSION) {
-            // Check if data is compressed
-            const isCompressed = parsedStorage.metadata?.compressed === true
             const contextsWithDates: Record<string, TextContext> = {}
             
-            if (isCompressed) {
-              // Decompress contexts
-              timeOperation(
-                PerformanceConfig.STORAGE_OPERATION,
-                () => {
-                  // Create text hash mapping for decompression
-                  const textHashMapping: Record<string, string> = {}
-                  Object.keys(parsedStorage.contexts || {}).forEach(key => {
-                    textHashMapping[key] = key // Use key as full hash for now
-                  })
-                  
-                  const decompressed = decompressContextBatch(parsedStorage.contexts as any, textHashMapping)
-                  
-                  // Reconstruct Date objects
-                  Object.entries(decompressed).forEach(([key, context]) => {
-                    contextsWithDates[key] = {
-                      ...context,
-                      timestamp: new Date(context.timestamp),
-                      lastUsed: new Date(context.lastUsed),
-                    }
-                  })
-                  
-                  console.debug(`Loaded ${Object.keys(contextsWithDates).length} compressed contexts`)
-                },
-                { contextCount: Object.keys(parsedStorage.contexts || {}).length, compressed: true }
-              )
-            } else {
-              // Legacy uncompressed format
-              Object.entries(parsedStorage.contexts || {}).forEach(([key, context]) => {
-                contextsWithDates[key] = {
-                  ...context,
-                  timestamp: new Date(context.timestamp),
-                  lastUsed: new Date(context.lastUsed),
-                }
-              })
-              console.debug(`Loaded ${Object.keys(contextsWithDates).length} uncompressed contexts`)
-            }
+            // Load contexts and reconstruct Date objects
+            Object.entries(parsedStorage.contexts || {}).forEach(([key, context]) => {
+              contextsWithDates[key] = {
+                ...context,
+                timestamp: new Date(context.timestamp),
+                lastUsed: new Date(context.lastUsed),
+              }
+            })
+            console.debug(`Loaded ${Object.keys(contextsWithDates).length} contexts`)
             
             setContexts(contextsWithDates)
             setStorageMetadata({
@@ -118,22 +87,18 @@ export function useNanoContext() {
       PerformanceConfig.STORAGE_OPERATION,
       () => {
         try {
-          // Compress contexts for efficient storage
-          const compressedContexts = compressContextBatch(contexts)
-          
           const storage: ContextStorage = {
-            contexts: compressedContexts as any, // Store compressed format
+            contexts: contexts,
             metadata: {
               ...storageMetadata,
               totalContexts: Object.keys(contexts).length,
-              estimatedSize: JSON.stringify(compressedContexts).length,
-              compressed: true // Flag to indicate compression
+              estimatedSize: JSON.stringify(contexts).length
             }
           }
 
           localStorage.setItem(NANO_CONTEXT_STORAGE_KEY, JSON.stringify(storage))
           
-          console.debug(`Saved ${Object.keys(contexts).length} contexts (compressed: ${JSON.stringify(compressedContexts).length} bytes)`)
+          console.debug(`Saved ${Object.keys(contexts).length} contexts (${JSON.stringify(contexts).length} bytes)`)
         } catch (error) {
           console.error('Failed to save nano context storage:', error)
           
