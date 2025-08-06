@@ -15,7 +15,6 @@ import {
   NANO_CONTEXT_STORAGE_KEY, 
   ContextStorage 
 } from '@/types/ai-models'
-import { decompressContextBatch } from '@/lib/context-compression'
 
 /**
  * NanoContextService - Core service for intelligent contextual awareness
@@ -707,43 +706,16 @@ Respond with only the JSON object, no additional text.`
       const parsedStorage: ContextStorage = JSON.parse(storedData)
       if (!parsedStorage.contexts) return null
 
-      // Check if the storage format is compressed
-      const isCompressed = parsedStorage.metadata?.compressed === true
-      
-      if (isCompressed) {
-        // Handle compressed format
-        const compressedContext = parsedStorage.contexts[textHash]
-        if (compressedContext) {
-          // Create text hash mapping for decompression
-          const textHashMapping = { [textHash]: textHash }
-          const decompressed = decompressContextBatch(
-            { [textHash]: compressedContext } as any, 
-            textHashMapping
-          )
-          
-          const context = decompressed[textHash]
-          if (context) {
-            // Reconstruct Date objects and validate
-            const result: TextContext = {
-              ...context,
-              timestamp: new Date(context.timestamp),
-              lastUsed: new Date(context.lastUsed)
-            }
-            return result
-          }
+      // Handle uncompressed format only
+      const context = parsedStorage.contexts[textHash]
+      if (context) {
+        // Reconstruct Date objects and validate
+        const result: TextContext = {
+          ...context,
+          timestamp: new Date(context.timestamp),
+          lastUsed: new Date(context.lastUsed)
         }
-      } else {
-        // Handle uncompressed format
-        const context = parsedStorage.contexts[textHash]
-        if (context) {
-          // Reconstruct Date objects and validate
-          const result: TextContext = {
-            ...context,
-            timestamp: new Date(context.timestamp),
-            lastUsed: new Date(context.lastUsed)
-          }
-          return result
-        }
+        return result
       }
     } catch (error) {
       console.warn('NanoContextService: Error reading context from localStorage:', error)
@@ -774,13 +746,12 @@ Respond with only the JSON object, no additional text.`
             lastCleanup: new Date(),
             totalContexts: 0,
             storageVersion: '1.0.0',
-            estimatedSize: 0,
-            compressed: false
+            estimatedSize: 0
           }
         }
       }
       
-      // Add the new context (uncompressed for simplicity)
+      // Add the new context
       storage.contexts[context.textHash] = context
       storage.metadata.totalContexts = Object.keys(storage.contexts).length
       storage.metadata.estimatedSize = JSON.stringify(storage.contexts).length

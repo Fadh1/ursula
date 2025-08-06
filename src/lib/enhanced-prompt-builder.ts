@@ -305,7 +305,7 @@ export function enhanceCustomPrompt(
     return userPrompt
   }
 
-  const contextSummary = createContextSummary(context, 80)
+  const contextSummary = createContextSummary(context)
   
   if (!contextSummary) {
     return userPrompt
@@ -314,5 +314,5 @@ export function enhanceCustomPrompt(
   // For custom prompts, append context more subtly to preserve user's intent
   return `${userPrompt}
 
-(Note: This text has the following characteristics: ${contextSummary})`
+Note: This text has the following characteristics: ${contextSummary}`
 }
