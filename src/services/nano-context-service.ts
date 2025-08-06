@@ -360,7 +360,6 @@ export class NanoContextService {
         description: parsedContext.description,
         tone: parsedContext.tone,
         intent: parsedContext.intent,
-        keyArguments: parsedContext.keyArguments,
         model: response.actualModel || model,
         timestamp: new Date(),
         lastUsed: new Date(),
@@ -392,15 +391,13 @@ export class NanoContextService {
 Your response should capture:
 1. Overall tone and style (formal, casual, technical, creative, etc.)
 2. Primary intent or purpose of the text
-3. Key arguments, points, or themes made
-4. Any notable characteristics that would help with text refinement
+3. Any notable characteristics that would help with text refinement
 
 Provide your analysis in the following JSON format:
 {
   "description": "A comprehensive 80-120 word description that captures the essence, tone, and key points of the text for use in future refinement contexts",
   "tone": "primary tone (formal/casual/technical/creative/persuasive/etc.)",
-  "intent": "main purpose or goal of the text",
-  "keyArguments": ["list", "of", "main", "points", "or", "arguments"]
+  "intent": "main purpose or goal of the text"
 }
 
 Text to analyze:
@@ -418,7 +415,6 @@ Respond with only the JSON object, no additional text.`
     description: string
     tone: string
     intent: string
-    keyArguments: string[]
   } | null {
     try {
       // Clean up response - remove markdown code blocks if present
@@ -438,10 +434,7 @@ Respond with only the JSON object, no additional text.`
       return {
         description: String(parsed.description).trim(),
         tone: String(parsed.tone).trim(),
-        intent: String(parsed.intent).trim(),
-        keyArguments: Array.isArray(parsed.keyArguments) 
-          ? parsed.keyArguments.map((arg: any) => String(arg)).filter((arg: string) => arg.trim())
-          : []
+        intent: String(parsed.intent).trim()
       }
 
     } catch (error) {
@@ -459,7 +452,6 @@ Respond with only the JSON object, no additional text.`
     description: string
     tone: string
     intent: string
-    keyArguments: string[]
   } | null {
     if (!response || response.length < 20) {
       return null
@@ -477,8 +469,7 @@ Respond with only the JSON object, no additional text.`
     return {
       description,
       tone,
-      intent: 'general purpose text',
-      keyArguments: []
+      intent: 'general purpose text'
     }
   }
 
@@ -644,7 +635,6 @@ Respond with only the JSON object, no additional text.`
         description: parsedContext.description + ' (generated from truncated large text)',
         tone: parsedContext.tone,
         intent: parsedContext.intent,
-        keyArguments: parsedContext.keyArguments,
         model: response.actualModel || model,
         timestamp: new Date(),
         lastUsed: new Date(),

@@ -53,18 +53,6 @@ export function formatContextForPrompt(context: TextContext): string {
       }
     }
 
-    // Add key arguments if available - with validation
-    if (Array.isArray(context.keyArguments) && context.keyArguments.length > 0) {
-      const validArgs = context.keyArguments
-        .filter(arg => typeof arg === 'string' && arg.trim().length > 0)
-        .map(arg => arg.trim())
-        .slice(0, 3) // Limit to top 3 arguments
-      
-      if (validArgs.length > 0) {
-        const argsText = validArgs.join(', ')
-        parts.push(`Key points: ${argsText}`)
-      }
-    }
 
     return parts.join(' | ')
   } catch (error) {
@@ -84,7 +72,7 @@ export function formatContextForPrompt(context: TextContext): string {
  */
 export function buildContextAwarePrompt(
   originalPrompt: string,
-  text: string,
+  _text: string,
   context?: TextContext | null
 ): string {
   try {
@@ -194,8 +182,7 @@ export function getRelevantContextForAction(
 
   switch (action) {
     case 'verify':
-      // For verification, focus on technical content and arguments
-      relevant.keyArguments = context.keyArguments
+      // For verification, focus on technical content
       if (context.tone.includes('technical') || context.tone.includes('academic')) {
         relevant.tone = context.tone
       }
@@ -205,7 +192,6 @@ export function getRelevantContextForAction(
       // For expansion, all context is potentially relevant
       relevant.description = context.description
       relevant.intent = context.intent
-      relevant.keyArguments = context.keyArguments
       relevant.tone = context.tone
       break
 
@@ -213,8 +199,6 @@ export function getRelevantContextForAction(
       // For rewording, tone and intent are most important
       relevant.tone = context.tone
       relevant.intent = context.intent
-      // Include key arguments to maintain core messaging
-      relevant.keyArguments = context.keyArguments?.slice(0, 2) // Limit for focus
       break
 
     default:
@@ -249,14 +233,6 @@ export function createContextSummary(context: TextContext | null, maxLength: num
     summary = summary ? `${summary}, ${context.intent}` : context.intent
   }
 
-  // Add first key argument if space allows
-  if (context.keyArguments && context.keyArguments.length > 0) {
-    const firstArg = context.keyArguments[0]
-    const potential = summary ? `${summary} - ${firstArg}` : firstArg
-    if (potential.length <= maxLength) {
-      summary = potential
-    }
-  }
 
   // Truncate if necessary
   if (summary.length > maxLength) {
@@ -281,8 +257,7 @@ export function isContextSuitableForPrompts(context: TextContext | null): boolea
 
   // Check for generic/default values that don't add value
   if (context.tone === 'neutral' && 
-      context.intent === 'general purpose text' && 
-      context.keyArguments.length === 0) {
+      context.intent === 'general purpose text') {
     return false
   }
 
