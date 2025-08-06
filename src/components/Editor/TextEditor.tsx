@@ -60,7 +60,6 @@ const TextEditor = ({
   const [showTooltip, setShowTooltip] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
-  const [refineSelection, setRefineSelection] = useState<{from: number, to: number} | null>(null)
   const [diffSelection, setDiffSelection] = useState<{ from: number; to: number } | null>(null)
   
   // Nano context state
@@ -186,19 +185,17 @@ const TextEditor = ({
   })
 
   const exitRefineMode = useCallback(() => {
-    if (isRefining && editor && refineSelection) {
-      // Remove the refine highlight
+    // Don't remove the highlight when exiting refine mode
+    // Just clear the selection
+    if (isRefining && editor) {
       editor.chain()
         .focus()
-        .setTextSelection(refineSelection)
-        .unsetHighlight()
         .setTextSelection(editor.state.selection.to) // Clear selection
         .run()
     }
     
     setIsRefining(false)
-    setRefineSelection(null)
-  }, [isRefining, editor, refineSelection])
+  }, [isRefining, editor])
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     // Don't dismiss if clicking on the tooltip itself
@@ -330,9 +327,8 @@ const TextEditor = ({
         .setHighlight({ color: 'rgba(59, 130, 246, 0.3)' }) // Blue highlight for refine
         .run()
       
-      // Enter refine mode and store the selection
+      // Enter refine mode
       setIsRefining(true)
-      setRefineSelection({ from, to })
       
       // Create highlight object for the selected text
       const highlight: Highlight = {

@@ -53,6 +53,7 @@ interface HighlightSidebarProps {
   onSelectHighlight: (highlight: Highlight) => void
   onTextUpdate: (highlightId: string, newText: string, context?: DiffContext) => void
   onDiffRequest?: (diffData: { original: string; suggested: string; context: DiffContext }) => void
+  onClearHighlight?: () => void
 }
 
 const HighlightSidebar = ({ 
@@ -62,7 +63,8 @@ const HighlightSidebar = ({
   highlights,
   onSelectHighlight,
   onTextUpdate,
-  onDiffRequest
+  onDiffRequest,
+  onClearHighlight
 }: HighlightSidebarProps) => {
   const [isLoading, setIsLoading] = useState(false)
   const [mode, setMode] = useState<'actions' | 'diff'>('actions')
@@ -254,6 +256,11 @@ const HighlightSidebar = ({
       addEntry(historyEntry)
       setSuggestedText(response.suggestedText)
       setCurrentContext(context)
+      
+      // Clear the current highlight from sidebar after refining
+      if (onClearHighlight) {
+        onClearHighlight()
+      }
       
       // Use in-editor diff if callback provided, otherwise fallback to sidebar
       if (onDiffRequest) {
