@@ -48,7 +48,7 @@ export function useNanoContext() {
           if (parsedStorage.metadata?.storageVersion === STORAGE_VERSION) {
             // Check if data is compressed
             const isCompressed = parsedStorage.metadata?.compressed === true
-            let contextsWithDates: Record<string, TextContext> = {}
+            const contextsWithDates: Record<string, TextContext> = {}
             
             if (isCompressed) {
               // Decompress contexts

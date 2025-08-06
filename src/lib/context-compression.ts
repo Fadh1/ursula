@@ -30,8 +30,6 @@ interface CompressedContext {
   lu: number
   /** Usage count */
   u: number
-  /** Confidence (rounded to 2 decimals) */
-  c: number
   /** Text length */
   l: number
 }
@@ -94,7 +92,6 @@ export function compressContext(context: TextContext): CompressedContext {
       ts: context.timestamp.getTime(),
       lu: context.lastUsed.getTime(),
       u: context.usageCount,
-      c: Math.round(context.confidence * 100) / 100, // Round to 2 decimals
       l: context.textLength
     }
   } catch (error) {
@@ -119,7 +116,6 @@ export function decompressContext(compressed: CompressedContext, fullTextHash: s
       timestamp: new Date(compressed.ts),
       lastUsed: new Date(compressed.lu),
       usageCount: compressed.u,
-      confidence: compressed.c,
       textLength: compressed.l
     }
   } catch (error) {

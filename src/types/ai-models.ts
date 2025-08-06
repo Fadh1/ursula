@@ -126,8 +126,6 @@ export interface TextContext {
   lastUsed: Date
   /** How many times context was used in prompts */
   usageCount: number
-  /** Confidence score (0-1) from AI generation */
-  confidence: number
   /** Original text length for reference */
   textLength: number
 }
