@@ -14,20 +14,25 @@ import {
   Lightbulb
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ActionType, ActionOptions, SmartSuggestion } from '@/types/ai-models'
+import { ActionType, ActionOptions, SmartSuggestion, TextContext } from '@/types/ai-models'
+import { ContextViewer } from './ContextViewer'
 
 interface ActionPanelProps {
   onActionSelect: (action: ActionType, options?: ActionOptions) => void
   isLoading: boolean
   smartSuggestion?: SmartSuggestion
   hasModel: boolean
+  context?: TextContext | null
+  onContextUpdate?: (updatedContext: Partial<TextContext>) => void
 }
 
 const ActionPanel = ({
   onActionSelect,
   isLoading,
   smartSuggestion,
-  hasModel
+  hasModel,
+  context,
+  onContextUpdate
 }: ActionPanelProps) => {
   const [customPrompt, setCustomPrompt] = useState('')
 
@@ -182,6 +187,13 @@ const ActionPanel = ({
           </div>
         </Card>
       )}
+
+      {/* Context Viewer */}
+      <ContextViewer 
+        context={context} 
+        onContextUpdate={onContextUpdate}
+        className="mt-6"
+      />
     </div>
   )
 }

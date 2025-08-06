@@ -342,6 +342,12 @@ const HighlightSidebar = ({
                     isLoading={isLoading}
                     smartSuggestion={smartSuggestion || undefined}
                     hasModel={!!selectedModel}
+                    context={textContext}
+                    onContextUpdate={(updatedContext) => {
+                      if (textContext && updatedContext) {
+                        setTextContext({ ...textContext, ...updatedContext })
+                      }
+                    }}
                   />
                 )}
 
