@@ -55,9 +55,6 @@ const Index = () => {
     setSidebarOpen(true)
   }
 
-  const handleSelectHighlight = (highlight: Highlight) => {
-    setCurrentHighlight(highlight)
-  }
 
   const handleOpenSidebar = () => {
     setSidebarOpen(true)
@@ -95,6 +92,10 @@ const Index = () => {
     setSidebarOpen(false)
     setCurrentHighlight(null)
   }
+  
+  const handleClearHighlight = () => {
+    setCurrentHighlight(null)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex">
@@ -126,10 +127,9 @@ const Index = () => {
             isOpen={sidebarOpen}
             onClose={handleSidebarClose}
             currentHighlight={currentHighlight}
-            highlights={highlights}
-            onSelectHighlight={handleSelectHighlight}
             onTextUpdate={handleTextUpdate}
             onDiffRequest={handleDiffRequest}
+            onClearHighlight={handleClearHighlight}
           />
         </div>
       )}
