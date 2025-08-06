@@ -18,8 +18,7 @@ import {
   ListOrdered,
   Quote,
   Undo,
-  Redo,
-  Highlighter
+  Redo
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SelectionTooltip from './SelectionTooltip'
@@ -56,7 +55,6 @@ const TextEditor = ({
   onDiffReject, 
   onDiffUndo 
 }: TextEditorProps) => {
-  const [highlightColor, setHighlightColor] = useState('yellow')
   const [showTooltip, setShowTooltip] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
@@ -346,31 +344,6 @@ const TextEditor = ({
     setShowTooltip(false)
   }
 
-  const addHighlight = useCallback(() => {
-    if (!editor) return
-
-    const { from, to } = editor.state.selection
-    const selectedText = editor.state.doc.textBetween(from, to, ' ')
-    
-    if (selectedText.trim()) {
-      // Apply highlight to selected text
-      editor.chain()
-        .focus()
-        .setHighlight({ color: highlightColor })
-        .run()
-
-      // Create highlight object
-      const highlight: Highlight = {
-        id: `highlight-${Date.now()}`,
-        text: selectedText,
-        color: highlightColor,
-        position: { from, to },
-        timestamp: new Date()
-      }
-
-      onHighlightCreate(highlight)
-    }
-  }, [editor, highlightColor, onHighlightCreate])
 
   if (!editor) {
     return null
@@ -402,26 +375,6 @@ const TextEditor = ({
     </Button>
   )
 
-  const HighlightColorButton = ({ color, isActive }: { color: string; isActive: boolean }) => {
-    const colorClasses = {
-      yellow: 'bg-highlight-yellow border-yellow-400',
-      blue: 'bg-highlight-blue border-blue-400',
-      green: 'bg-highlight-green border-green-400',
-      pink: 'bg-highlight-pink border-pink-400',
-    }
-
-    return (
-      <button
-        onClick={() => setHighlightColor(color)}
-        className={cn(
-          "w-7 h-7 rounded-lg border-2 transition-all duration-200 hover:scale-110 shadow-sm",
-          colorClasses[color as keyof typeof colorClasses],
-          isActive && "ring-2 ring-primary ring-offset-2 scale-110"
-        )}
-        title={`Highlight with ${color}`}
-      />
-    )
-  }
 
   return (
     <div className="w-full max-w-4xl mx-auto relative">
@@ -500,22 +453,6 @@ const TextEditor = ({
               title="Quote"
             >
               <Quote size={16} />
-            </ToolbarButton>
-          </div>
-
-          {/* Highlighting */}
-          <div className="flex items-center gap-2 pr-3 border-r border-border/30">
-            <div className="flex items-center gap-1">
-              <HighlightColorButton color="yellow" isActive={highlightColor === 'yellow'} />
-              <HighlightColorButton color="blue" isActive={highlightColor === 'blue'} />
-              <HighlightColorButton color="green" isActive={highlightColor === 'green'} />
-              <HighlightColorButton color="pink" isActive={highlightColor === 'pink'} />
-            </div>
-            <ToolbarButton
-              onClick={addHighlight}
-              title="Highlight Selected Text"
-            >
-              <Highlighter size={16} />
             </ToolbarButton>
           </div>
 
