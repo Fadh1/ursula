@@ -131,19 +131,15 @@ export function generateContextAwareActionPrompt(
 
   // Generate base prompt using existing patterns
   switch (action) {
-    case 'verify':
-      basePrompt = 'Verify this text for accuracy and add a brief verification note if accurate, or point out any concerns if inaccurate.'
-      break
     case 'expand':
       basePrompt = 'Expand this text with more detail, context, and supporting information while maintaining the original meaning.'
+      break
+    case 'condense':
+      basePrompt = 'Condense this text to be more concise while preserving all key points and essential information.'
       break
     case 'reword':
       if (options?.customPrompt) {
         basePrompt = options.customPrompt
-      } else if (options?.rewordType === 'concise') {
-        basePrompt = 'Make this text more concise by removing unnecessary words while preserving all key information.'
-      } else if (options?.rewordType === 'flesh_out') {
-        basePrompt = 'Flesh out this text with more detailed explanations, examples, and supporting context.'
       } else if (options?.rewordType === 'tone' && options?.tone) {
         basePrompt = `Rewrite this text in a ${options.tone} tone while maintaining the same information and key points.`
       } else if (options?.rewordType === 'simplify') {
@@ -181,18 +177,17 @@ export function getRelevantContextForAction(
   const relevant: Partial<TextContext> = {}
 
   switch (action) {
-    case 'verify':
-      // For verification, focus on technical content
-      if (context.tone.includes('technical') || context.tone.includes('academic')) {
-        relevant.tone = context.tone
-      }
-      break
-
     case 'expand':
       // For expansion, all context is potentially relevant
       relevant.description = context.description
       relevant.intent = context.intent
       relevant.tone = context.tone
+      break
+
+    case 'condense':
+      // For condensing, tone and intent help maintain the essence
+      relevant.tone = context.tone
+      relevant.intent = context.intent
       break
 
     case 'reword':

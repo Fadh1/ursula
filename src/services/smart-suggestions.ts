@@ -67,12 +67,21 @@ export class SmartSuggestionsService {
     const analysis = this.analyzeTextCharacteristics(text)
     
     // Rule-based recommendation logic
+    if (analysis.wordCount > 150) {
+      return {
+        suggested: 'condense',
+        confidence: 0.85,
+        reason: 'Long text could be more concise',
+        alternatives: ['reword']
+      }
+    }
+    
     if (analysis.wordCount > 100 && analysis.hasRedundancy) {
       return {
         suggested: 'reword',
         confidence: 0.8,
         reason: 'Text appears verbose with potential redundancy',
-        alternatives: ['expand', 'verify']
+        alternatives: ['expand', 'condense']
       }
     }
     
@@ -81,7 +90,7 @@ export class SmartSuggestionsService {
         suggested: 'expand',
         confidence: 0.75,
         reason: 'Short text could benefit from more detail',
-        alternatives: ['verify', 'reword']
+        alternatives: ['reword', 'condense']
       }
     }
     
@@ -90,7 +99,7 @@ export class SmartSuggestionsService {
         suggested: 'reword',
         confidence: 0.7,
         reason: 'Complex language could be simplified',
-        alternatives: ['verify', 'expand']
+        alternatives: ['expand', 'condense']
       }
     }
     
@@ -99,16 +108,16 @@ export class SmartSuggestionsService {
         suggested: 'reword',
         confidence: 0.65,
         reason: 'Text could be clearer and more concise',
-        alternatives: ['verify', 'expand']
+        alternatives: ['expand', 'condense']
       }
     }
     
     if (analysis.hasTechnicalTerms || text.includes('research') || text.includes('study')) {
       return {
-        suggested: 'verify',
+        suggested: 'expand',
         confidence: 0.6,
-        reason: 'Technical or factual content should be verified',
-        alternatives: ['expand', 'reword']
+        reason: 'Technical content could benefit from more detail',
+        alternatives: ['reword', 'condense']
       }
     }
     
@@ -117,7 +126,7 @@ export class SmartSuggestionsService {
       suggested: 'expand',
       confidence: 0.4,
       reason: 'Consider adding more context or detail',
-      alternatives: ['verify', 'reword']
+      alternatives: ['reword']
     }
   }
 
@@ -127,7 +136,7 @@ export class SmartSuggestionsService {
         suggested: 'expand',
         confidence: 0.3,
         reason: 'Empty text needs content',
-        alternatives: ['verify', 'reword']
+        alternatives: ['reword', 'condense']
       }
     }
 
@@ -162,13 +171,13 @@ export class SmartSuggestionsService {
   }
 
   private async getAIRecommendation(text: string, model: AIModel): Promise<ActionRecommendation | null> {
-    const prompt = `Analyze this text and recommend the best action: verify (check accuracy), expand (add detail), or reword (improve clarity/style). 
+    const prompt = `Analyze this text and recommend the best action: expand (add detail), condense (shorten while keeping key points), or reword (improve clarity/style). 
 
 Text: "${text}"
 
 Respond with JSON only:
 {
-  "suggested": "verify|expand|reword",
+  "suggested": "expand|condense|reword",
   "confidence": 0.0-1.0,
   "reason": "brief explanation",
   "alternatives": ["action1", "action2"]
@@ -188,7 +197,7 @@ Respond with JSON only:
       // Validate the response structure
       if (
         parsed.suggested && 
-        ['verify', 'expand', 'reword'].includes(parsed.suggested) &&
+        ['expand', 'condense', 'reword'].includes(parsed.suggested) &&
         typeof parsed.confidence === 'number' &&
         typeof parsed.reason === 'string' &&
         Array.isArray(parsed.alternatives)
@@ -198,7 +207,7 @@ Respond with JSON only:
           confidence: Math.max(0, Math.min(1, parsed.confidence)),
           reason: parsed.reason,
           alternatives: parsed.alternatives.filter((alt: string) => 
-            ['verify', 'expand', 'reword'].includes(alt)
+            ['expand', 'condense', 'reword'].includes(alt)
           ) as ActionType[]
         }
       }

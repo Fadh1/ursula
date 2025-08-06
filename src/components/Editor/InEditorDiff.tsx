@@ -63,10 +63,10 @@ const InEditorDiff = ({
 
   const getActionLabel = () => {
     switch (context.action) {
-      case 'verify':
-        return 'Verification'
       case 'expand':
         return 'Expansion'
+      case 'condense':
+        return 'Condensed'
       case 'reword':
         if (context.options.rewordType === 'tone') {
           return `Tone: ${context.options.tone}`

@@ -5,13 +5,13 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { 
-  CheckCircle, 
   PlusCircle, 
   Edit3, 
   Send, 
   Sparkles,
   AlertCircle,
-  Lightbulb
+  Lightbulb,
+  Minus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ActionType, ActionOptions, SmartSuggestion, TextContext } from '@/types/ai-models'
@@ -113,21 +113,21 @@ const ActionPanel = ({
       {/* Primary Actions */}
       <div className="grid gap-3">
         {getActionButton(
-          'verify',
-          <CheckCircle size={20} />,
-          'Verify',
-          'Check accuracy and add verification notes',
-          'bg-blue-100',
-          'text-blue-600'
-        )}
-
-        {getActionButton(
           'expand',
           <PlusCircle size={20} />,
           'Expand',
           'Add more detail and context',
           'bg-green-100',  
           'text-green-600'
+        )}
+
+        {getActionButton(
+          'condense',
+          <Minus size={20} />,
+          'Condense',
+          'Shorten while keeping key points',
+          'bg-orange-100',
+          'text-orange-600'
         )}
 
         {getActionButton(
