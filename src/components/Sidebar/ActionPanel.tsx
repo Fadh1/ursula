@@ -10,7 +10,8 @@ import {
   Send, 
   Sparkles,
   AlertCircle,
-  Lightbulb
+  Lightbulb,
+  Minus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ActionType, ActionOptions, SmartSuggestion, TextContext } from '@/types/ai-models'
@@ -118,6 +119,15 @@ const ActionPanel = ({
           'Add more detail and context',
           'bg-green-100',  
           'text-green-600'
+        )}
+
+        {getActionButton(
+          'condense',
+          <Minus size={20} />,
+          'Condense',
+          'Shorten while keeping key points',
+          'bg-orange-100',
+          'text-orange-600'
         )}
 
         {getActionButton(

@@ -65,6 +65,8 @@ const InEditorDiff = ({
     switch (context.action) {
       case 'expand':
         return 'Expansion'
+      case 'condense':
+        return 'Condensed'
       case 'reword':
         if (context.options.rewordType === 'tone') {
           return `Tone: ${context.options.tone}`
