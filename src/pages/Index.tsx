@@ -55,9 +55,6 @@ const Index = () => {
     setSidebarOpen(true)
   }
 
-  const handleSelectHighlight = (highlight: Highlight) => {
-    setCurrentHighlight(highlight)
-  }
 
   const handleOpenSidebar = () => {
     setSidebarOpen(true)
@@ -130,8 +127,6 @@ const Index = () => {
             isOpen={sidebarOpen}
             onClose={handleSidebarClose}
             currentHighlight={currentHighlight}
-            highlights={highlights}
-            onSelectHighlight={handleSelectHighlight}
             onTextUpdate={handleTextUpdate}
             onDiffRequest={handleDiffRequest}
             onClearHighlight={handleClearHighlight}
