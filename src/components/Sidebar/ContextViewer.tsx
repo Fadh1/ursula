@@ -98,55 +98,50 @@ export const ContextViewer = ({
       {/* Expanded View */}
       {isExpanded && (
         <Card className="p-4 space-y-4 bg-muted/30 border-muted">
-          {/* Header with actions */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Info size={16} className="text-muted-foreground" />
-              <h4 className="font-medium text-sm">Text Context Details</h4>
-            </div>
-            <div className="flex items-center gap-1">
-              {!isEditing ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleStartEdit}
-                  className="h-8 px-2 text-xs"
-                >
-                  <Edit3 size={12} className="mr-1" />
-                  Edit
-                </Button>
-              ) : (
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSaveEdit}
-                    className="h-8 px-2 text-xs text-green-600 hover:text-green-700"
-                  >
-                    <Save size={12} className="mr-1" />
-                    Save
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCancelEdit}
-                    className="h-8 px-2 text-xs text-red-600 hover:text-red-700"
-                  >
-                    <X size={12} className="mr-1" />
-                    Cancel
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Context Details */}
           <div className="space-y-3">
             {/* Description */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <MessageSquare size={14} className="text-muted-foreground" />
-                <Label className="text-sm font-medium">Description</Label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={14} className="text-muted-foreground" />
+                  <Label className="text-sm font-medium">Description</Label>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {!isEditing ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleStartEdit}
+                      className="h-8 px-2 text-xs"
+                    >
+                      <Edit3 size={12} className="mr-1" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSaveEdit}
+                        className="h-8 px-2 text-xs text-green-600 hover:text-green-700"
+                      >
+                        <Save size={12} className="mr-1" />
+                        Save
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        className="h-8 px-2 text-xs text-red-600 hover:text-red-700"
+                      >
+                        <X size={12} className="mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
               {isEditing ? (
                 <Textarea
