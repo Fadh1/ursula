@@ -55,11 +55,6 @@ const Index = () => {
     setSidebarOpen(true)
   }
 
-
-  const handleOpenSidebar = () => {
-    setSidebarOpen(true)
-  }
-
   const handleTextUpdate = (highlightId: string, newText: string, context?: DiffContext) => {
     const updatedHighlights = highlights.map(h => 
       h.id === highlightId ? { ...h, text: newText } : h
@@ -109,8 +104,6 @@ const Index = () => {
           <div className="flex justify-center">
             <TextEditor 
               onHighlightCreate={handleHighlightCreate}
-              activeHighlight={currentHighlight?.id}
-              onOpenSidebar={handleOpenSidebar}
               diffData={diffData}
               onDiffAccept={handleDiffAccept}
               onDiffReject={handleDiffReject}

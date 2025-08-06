@@ -3,13 +3,12 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { 
   Bold, 
   Italic, 
-  Underline, 
   Strikethrough,
   Heading1,
   Heading2,
@@ -22,7 +21,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SelectionTooltip from './SelectionTooltip'
-import InEditorDiff from './InEditorDiff'
+import InlineDiff from './InlineDiff'
 import { DiffContext, AIModel, TextContext } from '@/types/ai-models'
 import { nanoContextService } from '@/services/nano-context-service'
 import { aiService } from '@/services/ai-service'
@@ -38,8 +37,6 @@ interface Highlight {
 
 interface TextEditorProps {
   onHighlightCreate: (highlight: Highlight) => void
-  activeHighlight?: string | null
-  onOpenSidebar: () => void
   diffData?: { original: string; suggested: string; context: DiffContext } | null
   onDiffAccept?: () => void
   onDiffReject?: () => void
@@ -48,8 +45,6 @@ interface TextEditorProps {
 
 const TextEditor = ({ 
   onHighlightCreate, 
-  activeHighlight, 
-  onOpenSidebar, 
   diffData, 
   onDiffAccept, 
   onDiffReject, 
@@ -59,15 +54,14 @@ const TextEditor = ({
   const [hasSelection, setHasSelection] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [diffSelection, setDiffSelection] = useState<{ from: number; to: number } | null>(null)
+  const [showInlineDiff, setShowInlineDiff] = useState(false)
   
   // Nano context state
   const [previousContent, setPreviousContent] = useState<string>('')
-  const [currentContext, setCurrentContext] = useState<TextContext | null>(null)
   const [contextUpdateTimer, setContextUpdateTimer] = useState<NodeJS.Timeout | null>(null)
-  const [availableModels, setAvailableModels] = useState<AIModel[]>([])
   const [defaultModel, setDefaultModel] = useState<AIModel | null>(null)
   
-  const { addContext, getStorageStats } = useNanoContext()
+  const { addContext } = useNanoContext()
 
   // localStorage key for saving editor content
   const STORAGE_KEY = 'text-editor-content'
@@ -178,6 +172,9 @@ const TextEditor = ({
       // Store selection for diff if we have diff data
       if (diffData && hasContent) {
         setDiffSelection({ from, to })
+        setShowInlineDiff(true)
+      } else if (!diffData) {
+        setShowInlineDiff(false)
       }
     },
   })
@@ -234,7 +231,6 @@ const TextEditor = ({
     const loadModels = async () => {
       try {
         const models = await aiService.getAvailableModels()
-        setAvailableModels(models)
         const defaultModel = models.find(m => m.isDefault) || models[0]
         setDefaultModel(defaultModel)
         
@@ -248,7 +244,6 @@ const TextEditor = ({
             const existingContext = nanoContextService.getContextForText(textHash)
             
             if (existingContext) {
-              setCurrentContext(existingContext)
               console.log('Loaded existing context for current text')
             }
           }
@@ -281,7 +276,6 @@ const TextEditor = ({
           previousContent,
           defaultModel,
           (context: TextContext) => {
-            setCurrentContext(context)
             // Store in localStorage for persistence
             addContext(context)
             console.log('Context updated:', context.description.substring(0, 50) + '...')
@@ -481,43 +475,36 @@ const TextEditor = ({
           className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus:border-none [&_.ProseMirror]:focus:ring-0 [&_.ProseMirror]:focus:shadow-none"
         />
         
-        {/* In-Editor Diff Overlay */}
-        {diffData && onDiffAccept && onDiffReject && diffSelection && (
-          <InEditorDiff
-            originalText={diffData.original}
-            suggestedText={diffData.suggested}
-            onAccept={() => {
-              if (editor && diffSelection) {
-                // Replace the selected text with the suggested text
-                editor.chain()
-                  .focus()
-                  .setTextSelection(diffSelection)
-                  .deleteSelection()
-                  .insertContent(diffData.suggested)
-                  .run()
-              }
-              onDiffAccept()
-            }}
-            onReject={onDiffReject}
-            onUndo={onDiffUndo}
-            context={diffData.context}
-            position={(() => {
-              if (!editor || !diffSelection) return undefined
-              try {
-                const coords = editor.view.coordsAtPos(diffSelection.from)
-                const endCoords = editor.view.coordsAtPos(diffSelection.to)
-                if (coords && endCoords) {
-                  return {
-                    top: coords.bottom + 10,
-                    left: coords.left + (endCoords.left - coords.left) / 2
-                  }
+        {/* Inline Diff Component */}
+        {diffData && onDiffAccept && onDiffReject && showInlineDiff && diffSelection && (
+          <div className="px-6 -mt-2">
+            <InlineDiff
+              originalText={diffData.original}
+              suggestedText={diffData.suggested}
+              onAccept={() => {
+                if (editor && diffSelection) {
+                  // Replace the selected text with the suggested text
+                  editor.chain()
+                    .focus()
+                    .setTextSelection(diffSelection)
+                    .deleteSelection()
+                    .insertContent(diffData.suggested)
+                    .run()
                 }
-              } catch (e) {
-                console.error('Error getting diff position:', e)
-              }
-              return undefined
-            })()}
-          />
+                setShowInlineDiff(false)
+                onDiffAccept()
+              }}
+              onReject={() => {
+                setShowInlineDiff(false)
+                onDiffReject()
+              }}
+              onUndo={() => {
+                setShowInlineDiff(false)
+                onDiffUndo?.()
+              }}
+              context={diffData.context}
+            />
+          </div>
         )}
       </div>
 
