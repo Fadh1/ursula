@@ -3,13 +3,12 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { 
   Bold, 
   Italic, 
-  Underline, 
   Strikethrough,
   Heading1,
   Heading2,
@@ -22,7 +21,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SelectionTooltip from './SelectionTooltip'
-import InEditorDiff from './InEditorDiff'
+import { InlineDiffNode } from './extensions/InlineDiffNode'
+import './extensions/types'
 import { DiffContext, AIModel, TextContext } from '@/types/ai-models'
 import { nanoContextService } from '@/services/nano-context-service'
 import { aiService } from '@/services/ai-service'
@@ -38,8 +38,6 @@ interface Highlight {
 
 interface TextEditorProps {
   onHighlightCreate: (highlight: Highlight) => void
-  activeHighlight?: string | null
-  onOpenSidebar: () => void
   diffData?: { original: string; suggested: string; context: DiffContext } | null
   onDiffAccept?: () => void
   onDiffReject?: () => void
@@ -48,8 +46,6 @@ interface TextEditorProps {
 
 const TextEditor = ({ 
   onHighlightCreate, 
-  activeHighlight, 
-  onOpenSidebar, 
   diffData, 
   onDiffAccept, 
   onDiffReject, 
@@ -59,15 +55,14 @@ const TextEditor = ({
   const [hasSelection, setHasSelection] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [diffSelection, setDiffSelection] = useState<{ from: number; to: number } | null>(null)
+  const [activeDiffId, setActiveDiffId] = useState<string | null>(null)
   
   // Nano context state
   const [previousContent, setPreviousContent] = useState<string>('')
-  const [currentContext, setCurrentContext] = useState<TextContext | null>(null)
   const [contextUpdateTimer, setContextUpdateTimer] = useState<NodeJS.Timeout | null>(null)
-  const [availableModels, setAvailableModels] = useState<AIModel[]>([])
   const [defaultModel, setDefaultModel] = useState<AIModel | null>(null)
   
-  const { addContext, getStorageStats } = useNanoContext()
+  const { addContext } = useNanoContext()
 
   // localStorage key for saving editor content
   const STORAGE_KEY = 'text-editor-content'
@@ -150,6 +145,7 @@ const TextEditor = ({
       }),
       TextStyle,
       Color,
+      InlineDiffNode,
     ],
     content: loadSavedContent(),
     onUpdate: ({ editor }) => {
@@ -234,7 +230,6 @@ const TextEditor = ({
     const loadModels = async () => {
       try {
         const models = await aiService.getAvailableModels()
-        setAvailableModels(models)
         const defaultModel = models.find(m => m.isDefault) || models[0]
         setDefaultModel(defaultModel)
         
@@ -248,7 +243,6 @@ const TextEditor = ({
             const existingContext = nanoContextService.getContextForText(textHash)
             
             if (existingContext) {
-              setCurrentContext(existingContext)
               console.log('Loaded existing context for current text')
             }
           }
@@ -281,7 +275,6 @@ const TextEditor = ({
           previousContent,
           defaultModel,
           (context: TextContext) => {
-            setCurrentContext(context)
             // Store in localStorage for persistence
             addContext(context)
             console.log('Context updated:', context.description.substring(0, 50) + '...')
@@ -298,6 +291,101 @@ const TextEditor = ({
     
     setContextUpdateTimer(timer)
   }, [defaultModel, previousContent, contextUpdateTimer, addContext])
+
+  // Function to find the end of the current sentence containing the selection
+  const findSentenceEnd = useCallback((doc: unknown, position: number) => {
+    const textContent = (doc as { textContent?: string })?.textContent || editor?.getText() || ''
+    let searchPos = position
+    
+    // Find the end of the current sentence (look for ., !, ?, or end of paragraph)
+    while (searchPos < textContent.length) {
+      const char = textContent[searchPos]
+      if (char === '.' || char === '!' || char === '?' || char === '\n') {
+        // Move to the position after the punctuation
+        return Math.min(searchPos + 1, textContent.length)
+      }
+      searchPos++
+    }
+    
+    // If no sentence end found, return the end of current selection
+    return position
+  }, [editor])
+
+  // Function to insert inline diff at the precise location
+  const insertInlineDiff = useCallback(() => {
+    if (!editor || !diffData || !diffSelection) return
+
+    const doc = editor.state.doc
+    const sentenceEnd = findSentenceEnd(doc, diffSelection.to)
+    const diffId = `diff-${Date.now()}-${Math.random()}`
+
+    // Insert the inline diff node at the sentence end
+    editor.chain()
+      .focus()
+      .setTextSelection(sentenceEnd)
+      .insertInlineDiff({
+        originalText: diffData.original,
+        suggestedText: diffData.suggested,
+        context: JSON.stringify(diffData.context),
+        diffId: diffId
+      })
+      .run()
+
+    setActiveDiffId(diffId)
+  }, [editor, diffData, diffSelection, findSentenceEnd])
+
+  // Handle inline diff events from the custom node
+  useEffect(() => {
+    const handleInlineDiffAccept = (event: CustomEvent) => {
+      const { diffId, suggestedText } = event.detail
+      if (diffId === activeDiffId && onDiffAccept) {
+        // Replace the original text with suggested text
+        if (editor && diffSelection) {
+          editor.chain()
+            .focus()
+            .setTextSelection(diffSelection)
+            .deleteSelection()
+            .insertContent(suggestedText)
+            .run()
+        }
+        onDiffAccept()
+        setActiveDiffId(null)
+      }
+    }
+
+    const handleInlineDiffReject = (event: CustomEvent) => {
+      const { diffId } = event.detail
+      if (diffId === activeDiffId && onDiffReject) {
+        onDiffReject()
+        setActiveDiffId(null)
+      }
+    }
+
+    const handleInlineDiffUndo = (event: CustomEvent) => {
+      const { diffId } = event.detail
+      if (diffId === activeDiffId && onDiffUndo) {
+        onDiffUndo()
+        setActiveDiffId(null)
+      }
+    }
+
+    document.addEventListener('inline-diff-accept', handleInlineDiffAccept)
+    document.addEventListener('inline-diff-reject', handleInlineDiffReject)
+    document.addEventListener('inline-diff-undo', handleInlineDiffUndo)
+
+    return () => {
+      document.removeEventListener('inline-diff-accept', handleInlineDiffAccept)
+      document.removeEventListener('inline-diff-reject', handleInlineDiffReject)
+      document.removeEventListener('inline-diff-undo', handleInlineDiffUndo)
+    }
+  }, [activeDiffId, editor, diffSelection, onDiffAccept, onDiffReject, onDiffUndo])
+
+  // Trigger inline diff insertion when diffData changes
+  useEffect(() => {
+    if (diffData && diffSelection && !activeDiffId) {
+      insertInlineDiff()
+    }
+  }, [diffData, diffSelection, activeDiffId, insertInlineDiff])
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -481,44 +569,7 @@ const TextEditor = ({
           className="min-h-[500px] prose prose-lg max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:border-none [&_.ProseMirror]:p-6 [&_.ProseMirror]:bg-transparent [&_.ProseMirror]:focus:outline-none [&_.ProseMirror]:focus:border-none [&_.ProseMirror]:focus:ring-0 [&_.ProseMirror]:focus:shadow-none"
         />
         
-        {/* In-Editor Diff Overlay */}
-        {diffData && onDiffAccept && onDiffReject && diffSelection && (
-          <InEditorDiff
-            originalText={diffData.original}
-            suggestedText={diffData.suggested}
-            onAccept={() => {
-              if (editor && diffSelection) {
-                // Replace the selected text with the suggested text
-                editor.chain()
-                  .focus()
-                  .setTextSelection(diffSelection)
-                  .deleteSelection()
-                  .insertContent(diffData.suggested)
-                  .run()
-              }
-              onDiffAccept()
-            }}
-            onReject={onDiffReject}
-            onUndo={onDiffUndo}
-            context={diffData.context}
-            position={(() => {
-              if (!editor || !diffSelection) return undefined
-              try {
-                const coords = editor.view.coordsAtPos(diffSelection.from)
-                const endCoords = editor.view.coordsAtPos(diffSelection.to)
-                if (coords && endCoords) {
-                  return {
-                    top: coords.bottom + 10,
-                    left: coords.left + (endCoords.left - coords.left) / 2
-                  }
-                }
-              } catch (e) {
-                console.error('Error getting diff position:', e)
-              }
-              return undefined
-            })()}
-          />
-        )}
+        {/* Note: Inline diff is now embedded directly in the editor content using InlineDiffNode */}
       </div>
 
       {/* Selection Tooltip */}
