@@ -38,9 +38,7 @@ export const ContextViewer = ({
 
   if (!context) {
     return (
-      <div className={cn("text-xs text-muted-foreground", className)}>
-        No context available for this text
-      </div>
+      <></>
     )
   }
 
@@ -99,10 +97,15 @@ export const ContextViewer = ({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Compact View */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-        <span>Context available: {context.tone} tone, {context.intent}</span>
+      {/* Heading */}
+      <div className="flex items-center gap-2">
+        <Info className="text-muted-foreground mt-1 flex-shrink-0" size={14} />
+        <div className="text-sm text-muted-foreground mt-1">Context</div>
+      </div>
+      
+      {/* Context Preview */}
+      <div className="flex items-center gap-2 text-sm bg-muted/50 p-3 rounded-lg border">
+        <span className="flex-1 truncate">{context.description}</span>
         <Button
           variant="ghost"
           size="sm"

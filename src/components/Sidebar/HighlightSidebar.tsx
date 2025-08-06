@@ -335,15 +335,6 @@ const HighlightSidebar = ({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  const getColorBadgeClass = (color: string) => {
-    const colorClasses = {
-      yellow: 'bg-highlight-yellow text-yellow-800 border-yellow-300',
-      blue: 'bg-highlight-blue text-blue-800 border-blue-300',
-      green: 'bg-highlight-green text-green-800 border-green-300',
-      pink: 'bg-highlight-pink text-pink-800 border-pink-300',
-    }
-    return colorClasses[color as keyof typeof colorClasses] || 'bg-muted'
-  }
 
   if (!isOpen) return null
 
@@ -383,7 +374,7 @@ const HighlightSidebar = ({
             </div>
             
             {/* Context Viewer */}
-            <div className="mt-2">
+            <div className="mt-4">
               <ContextViewer 
                 context={textContext && isContextSuitableForPrompts(textContext) ? textContext : null}
                 onContextUpdate={handleContextUpdate}
